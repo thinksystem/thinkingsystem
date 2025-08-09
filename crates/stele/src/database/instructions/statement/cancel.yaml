@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: cancel
+spec:
+  syntax: "CANCEL [ TRANSACTION ];"
+  summary: "Manually rolls back and cancels the current transaction."
+  variants:
+    - name: "Default"
+      summary: "Manually rolls back all changes in the current transaction."
+      syntax: "CANCEL [ TRANSACTION ];"
+      examples:
+        - query: |
+            BEGIN TRANSACTION;
+
+            CREATE account:one SET balance = 135605.16;
+            CREATE account:two SET balance = 91031.31;
+
+            UPDATE account:one SET balance += 300.00;
+            UPDATE account:two SET balance -= 300.00;
+
+            CANCEL TRANSACTION;

@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[system]
+name = "thinking-system"
+version = "0.1.0"
+debug = true
+
+[steel]
+# Kernel configuration
+scheduler_threads = 4
+memory_limit_mb = 1024
+resource_timeout_ms = 5000
+
+[stele]
+# Cognitive core configuration
+analysis_depth = 3
+learning_rate = 0.1
+memory_consolidation_interval_ms = 30000
+
+[sleet]
+# Agent runtime configuration
+max_concurrent_agents = 10
+flow_execution_timeout_ms = 10000
+default_personality = "alpha"
+
+[scribes]
+# Knowledge layer configuration
+graph_cache_size = 1000
+indexing_batch_size = 100
+semantic_similarity_threshold = 0.8
+
+default_llm_provider = "anthropic"
+default_db_provider = "surrealdb"
+default_messaging_provider = "redis"
+
+[logging]
+level = "info"
+format = "json"
+output = "stdout"

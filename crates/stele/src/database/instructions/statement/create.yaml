@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: create
+spec:
+  syntax: |
+    CREATE [ ONLY ] @targets
+    	[ CONTENT @value
+    	  | SET @field = @value ...
+    	]
+    	[ RETURN [ NONE | BEFORE | AFTER | DIFF | @fields ... ] ]
+    	[ TIMEOUT @duration ]
+    	[ PARALLEL ]
+    	[ VERSION @datetime ];
+  summary: "Creates one or more records in the database."
+  variants:
+    - name: "Create with SET or CONTENT"
+      summary: "Creates a record with specified data using either the SET or CONTENT clause."
+      syntax: "CREATE @targets [ SET @field = @value ... | CONTENT @value ]"
+      examples:
+        - query: |
+            CREATE person:tobie SET
+                name = 'Tobie',
+                company = 'SurrealDB',
+                skills = ['Rust', 'Go', 'JavaScript'];
+        - query: |
+            CREATE person:100 CONTENT {
+            	name: 'Tobie',
+            	company: 'SurrealDB',
+            	skills: ['Rust', 'Go', 'JavaScript'],
+            };
+    - name: "Create Multiple Records"
+      summary: "Creates multiple records in a single statement using comma separation or range syntax."
+      syntax: "CREATE @target, @target, ..."
+      examples:
+        - query: |
+            CREATE dog, |cat:2|, |townsperson:1..3| SET
+                created_at = time::now(),
+                name = "Just a " + meta::tb(id);
+    - name: "Return a Single Object with ONLY"
+      summary: "Use the ONLY clause to return a single record object directly, instead of in an array."
+      syntax: "CREATE ONLY @target ..."
+      examples:
+        - query: |
+            CREATE ONLY person:tobie SET
+                name = 'Tobie',
+                company = 'SurrealDB';
+    - name: "Customise Return Value"
+      summary: "Controls the output using the RETURN clause to specify fields, computed values, or nothing."
+      syntax: "CREATE ... RETURN [ NONE | BEFORE | AFTER | DIFF | @fields ... | VALUE @field ]"
+      examples:
+        - query: |
+            CREATE person
+                SET age = 46, username = "john-smith", interests = ['skiing', 'music']
+            RETURN age, interests, age + 1 AS age_next_year;
+        - query: |
+            CREATE |person:3| SET age = 20 RETURN VALUE age;
+    - name: "Set a Query Timeout"
+      summary: "Specifies a maximum execution time for the statement to prevent long-running queries."
+      syntax: "CREATE ... TIMEOUT @duration"
+      examples:
+        - query: "CREATE |person:500000| SET username = 'john-smith' TIMEOUT 500ms;"
+    - name: "Run in Parallel"
+      summary: "Processes multiple creation operations concurrently using the PARALLEL clause."
+      syntax: "CREATE ... PARALLEL"
+      examples:
+        - query: "CREATE person:26, person:27 PARALLEL;"

@@ -1,0 +1,78 @@
+{
+  "blocks": [
+    {
+      "id": "conditional_template",
+      "type": "Conditional",
+      "properties": {
+        "condition": "{{state.variable}} == 'some_value'",
+        "true_block": "{{true_block_id}}",
+        "false_block": "{{false_block_id}}"
+      }
+    },
+    {
+      "id": "decision_template",
+      "type": "Decision",
+      "properties": {
+        "options": [
+          { "condition": "state.choice == 'A'", "target": "{{target_A}}" },
+          { "condition": "state.choice == 'B'", "target": "{{target_B}}" }
+        ],
+        "default_target": "{{default_target_id}}"
+      }
+    },
+    {
+      "id": "display_template",
+      "type": "Display",
+      "properties": {
+        "message": "{{content_to_display}}",
+        "next_block": "{{next_block_id}}"
+      }
+    },
+    {
+      "id": "external_data_template",
+      "type": "ExternalData",
+      "properties": {
+        "api_url": "{{url_to_fetch}}",
+        "data_path": "{{json_path_to_data}}",
+        "next_block": "{{next_block_id}}"
+      }
+    },
+    {
+      "id": "goto_template",
+      "type": "GoTo",
+      "properties": {
+        "target": "{{target_block_id}}"
+      }
+    },
+    {
+      "id": "input_template",
+      "type": "Input",
+      "properties": {
+        "prompt": "{{prompt_text}}",
+        "target": "{{next_block_id}}",
+        "input_key": "user_response"
+      }
+    },
+    {
+      "id": "interactive_template",
+      "type": "Interactive",
+      "properties": {
+        "question": "{{prompt_text}}",
+        "options": [
+          { "label": "{{option1_label}}", "target": "{{option1_target}}" },
+          { "label": "{{option2_label}}", "target": "{{option2_target}}" }
+        ]
+      }
+    },
+    {
+      "id": "random_template",
+      "type": "Random",
+      "properties": {
+        "options": [
+          { "target": "{{option1_target}}", "weight": 0.5 },
+          { "target": "{{option2_target}}", "weight": 0.5 }
+        ]
+      }
+    }
+  ]
+}

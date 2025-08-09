@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: kill
+spec:
+  syntax: "KILL @value;"
+  summary: "Terminates a running live query using its UUID."
+  variants:
+    - name: "Default Usage"
+      summary: "Terminates a running live query using its UUID."
+      syntax: "KILL @value;"
+      examples:
+        - setup:
+            - "LIVE SELECT DIFF FROM person;"
+          query: "KILL u'0189d6e3-8eac-703a-9a48-d9faa78b44b9';"
+        - query: |
+            LET $live_query_id = u'0189d6e3-8eac-703a-9a48-d9faa78b44b9';
+            KILL $live_query_id;
+        - query: "KILL u'9276b05b-e59a-49cd-9dd1-17c6fd15c28f';"
+  features:
+    - name: "Kill Notifications"
+      summary: "Triggers a notification event when a live query is killed."
+      available_since: "v3.0.0-alpha.4"

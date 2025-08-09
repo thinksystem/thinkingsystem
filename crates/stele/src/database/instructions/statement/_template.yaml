@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: <statement_name>
+spec:
+  syntax: "<STATEMENT_KEYWORD> <...>"
+  summary: "A brief description of what this statement does."
+  variants:
+    - name: "Variant Name"
+      summary: "A one-line summary of what this specific variant does."
+      syntax: "<STATEMENT_KEYWORD> <variant_specific_syntax>"
+      examples:
+        - setup:
+            - "CREATE user:one SET balance = 100;"
+          query: "<full_example_query>"

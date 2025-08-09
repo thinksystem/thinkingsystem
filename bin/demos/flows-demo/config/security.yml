@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+limits:
+  input_max_length: 10000
+  sql_max_length: 5000
+  config_value_max_length: 1000
+  log_truncate_length: 100
+
+path_security:
+  blocked_extensions:
+    - exe
+    - bat
+    - cmd
+    - sh
+    - ps1
+    - dll
+    - so
+
+sql_security:
+  allowed_statement_types:
+    - Query
+  blocked_statement_types:
+    - Insert
+    - Update
+    - Delete
+    - CreateTable
+    - CreateIndex
+    - CreateView
+    - AlterTable
+    - Drop
+    - Truncate
+    - Copy
+    - Call
+    - Execute
+    - Prepare
+    - Deallocate
+    - ShowVariable
+    - StartTransaction
+    - Commit
+    - Rollback
+  allowed_expression_types:
+    - BinaryOp
+    - UnaryOp
+    - Cast
+    - Case
+    - Function
+    - Subquery
+    - InList
+    - InSubquery
+    - Between
+    - Identifier
+    - CompoundIdentifier
+    - Value
+    - IsNull
+    - IsNotNull
+    - Like
+    - ILike
+    - SimilarTo
+    - Exists
+    - IsDistinctFrom
+    - IsNotDistinctFrom
+    - Nested
+    - Extract
+    - Substring
+    - Trim
+    - Collate
+    - Tuple
+    - Interval
+  blocked_functions:
+    - load_file
+    - into_outfile
+    - copy
+    - bulk_insert
+    - openrowset
+    - opendatasource
+    - exec
+    - execute
+    - sp_executesql
+    - xp_cmdshell
+    - eval
+    - system
+    - shell_exec
+    - passthru
+    - file_get_contents
+    - file_put_contents
+    - fopen
+    - fwrite
+    - include
+    - require
+    - import
+  blocked_schemas:
+    - information_schema
+    - mysql
+    - sys
+    - performance_schema
+    - pg_catalogue
+    - pg_toast
+    - pg_temp
+    - master
+    - msdb
+    - tempdb
+    - model
+
+input_security:
+  dangerous_patterns:
+    - "\\x00"
+    - "\\x1a"
+    - "\\.\\./|\\.\\.\\\\|%2e%2e%2f|%2e%2e%5c"
+    - "javascript:"
+    - "vbscript:"
+    - "data:"
+    - "<script"
+    - "</script>"
+    - "<iframe"
+    - "<object"
+    - "<embed"
+    - "onload="
+    - "onerror="
+    - "onclick="
+    - "onmouseover="
+    - "eval\\s*\\("
+    - "exec\\s*\\("
+    - "system\\s*\\("
+    - "shell_exec\\s*\\("
+    - "passthru\\s*\\("
+    - "file_get_contents\\s*\\("
+    - "file_put_contents\\s*\\("
+    - "fopen\\s*\\("
+    - "fwrite\\s*\\("
+    - "include\\s*\\("
+    - "require\\s*\\("
+    - "import\\s*\\("
+    - "\\$\\{.*\\}"
+    - "\\#\\{.*\\}"
+    - "<%.*%>"
+    - "\\{\\{.*\\}\\}"
+
+encoding_security:
+  normalise_unicode: true
+  reject_null_bytes: true
+  max_encoding_layers: 2

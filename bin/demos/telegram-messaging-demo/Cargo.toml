@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "telegram-messaging-demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+stele = { path = "../../../crates/stele" }
+steel = { path = "../../../crates/steel" }
+serde_json.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+reqwest.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+glow.workspace = true
+egui.workspace = true
+eframe.workspace = true
+log.workspace = true
+dotenvy.workspace = true
+clap.workspace = true
+tokio-util.workspace = true
+anyhow.workspace = true
+
+[[bin]]
+name = "telegram-messaging-demo"
+path = "src/main.rs"

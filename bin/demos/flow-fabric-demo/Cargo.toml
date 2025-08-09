@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "flow-fabric-demo"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+dotenvy = { workspace = true }
+
+# Workspace crates
+stele = { workspace = true }
+steel = { workspace = true }
+llm-contracts = { workspace = true }
+
+# Local fabric core (Rust library)
+gtr_core = { path = "../../gtr-fabric/native/gtr_core", default-features = false }

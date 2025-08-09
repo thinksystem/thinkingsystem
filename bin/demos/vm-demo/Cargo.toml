@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "vm-demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sleet = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+tokio = { workspace = true }

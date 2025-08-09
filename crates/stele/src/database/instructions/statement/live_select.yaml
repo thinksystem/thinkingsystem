@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: live select
+spec:
+  syntax: |
+    LIVE SELECT
+    	[ [ VALUE ] @fields [ AS @alias ] | DIFF ]
+    	FROM @targets
+    	[ WHERE @conditions ]
+    	[ FETCH @fields ... ];
+  summary: "Initiates a real-time selection from a table, pushing data changes to the client as they happen."
+  variants:
+    - name: "Default"
+      summary: "Returns a unique ID for the query. Create/update events send the full record, and delete events send the record ID."
+      syntax: "LIVE SELECT * FROM @targets"
+      examples:
+        - query: "LIVE SELECT * FROM person;"
+    - name: "Using DIFF mode"
+      summary: "Update notifications are sent as an array of JSON Patch messages, which is more efficient for small changes."
+      syntax: "LIVE SELECT DIFF FROM @targets"
+      examples:
+        - query: "LIVE SELECT DIFF FROM person;"
+    - name: "Filtering the live query"
+      summary: "The `WHERE` clause filters notifications to only those matching the specified conditions."
+      syntax: "LIVE SELECT * FROM @targets WHERE @conditions"
+      examples:
+        - query: "LIVE SELECT * FROM person WHERE age > 18;"
+    - name: "Fetching related records"
+      summary: "The `FETCH` clause includes connected records in the live query notifications."
+      syntax: "LIVE SELECT * FROM @targets FETCH @fields ..."
+      available_since: "v2.2.0"
+      examples:
+        - query: "LIVE SELECT * FROM person WHERE age > 18 FETCH friends;"
+    - name: "Using Parameters"
+      summary: "Demonstrates the supported use of parameters to specify the target table of a live query."
+      syntax: "LIVE SELECT * FROM $table_param"
+      examples:
+        - query: |
+            LET $table = 'person';
+            LIVE SELECT * FROM $table WHERE age > 50;

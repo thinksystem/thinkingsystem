@@ -1,0 +1,87 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# GLiNER Model Configuration for Steel Insight Module
+#
+# This configuration demonstrates how to set up Named Entity Recognition (NER)
+# capabilities alongside the existing syntactic analysis.
+
+[messaging.security]
+# Enable hybrid analysis (syntactic + NER)
+enable_hybrid_analysis = true
+
+# Weights for combining syntactic and NER scores
+syntactic_weight = 0.6
+ner_weight = 0.4
+
+# NER boost settings
+enable_ner_boost = true
+ner_boost_threshold = 0.8
+min_combined_threshold = 0.5
+
+[messaging.security.ner]
+# Path to GLiNER model directory
+model_path = "models/gliner_small-v2.1"
+enabled = true
+min_confidence_threshold = 0.5
+max_text_length = 2048
+
+# Entity labels to detect
+entity_labels = [
+    "person",
+    "email",
+    "phone",
+    "organization",
+    "location",
+    "credit_card",
+    "ssn",
+    "ip_address",
+    "date",
+    "url"
+]
+
+# Risk weights for different entity types
+[messaging.security.ner.entity_weights]
+person = 0.8
+email = 0.9
+phone = 0.9
+organization = 0.6
+location = 0.5
+credit_card = 1.0
+ssn = 1.0
+ip_address = 0.7
+date = 0.3
+url = 0.4
+
+# Existing syntactic scoring configuration
+[messaging.security.scoring]
+length_bonus_8 = 0.1
+length_bonus_16 = 0.1
+all_digits_bonus = 0.4
+all_digits_len_bonus_10 = 0.2
+alphanumeric_bonus = 0.2
+mixed_case_bonus = 0.1
+at_symbol_bonus = 0.6
+hyphen_bonus = 0.2
+slash_bonus = 0.2
+uuid_like_bonus = 0.4
+api_key_like_bonus = 0.3
+
+[messaging.security.thresholds]
+scribes_review_percentile = 0.85
+absolute_threshold_override = 0.75
+min_history_for_percentile = 20
+llm_grey_area_low = 0.40
+llm_grey_area_high = 0.75
+
+[messaging.security.distribution]
+max_history_size = 1000
+
+[messaging.security.paths]
+state_dir = "src/messaging/state"
+state_file = "score_distribution.yml"
+training_data_file = "training_data.jsonl"
+
+[messaging.security.llm]
+api_endpoint = "http://localhost:11434/api/generate"
+model = "llama3"
+timeout_seconds = 30

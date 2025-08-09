@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: limit
+spec:
+  syntax: "@query LIMIT <number> [ START <start> ]"
+  summary: "Restricts the number of records returned by a query, with an optional starting point for pagination."
+  variants:
+    - name: "Basic Limit"
+      summary: "Restricts the result set to a specific number of records."
+      queries:
+        - query: "SELECT * FROM person LIMIT 10;"
+    - name: "Pagination with START"
+      summary: "Skips a specified number of records before applying the limit, enabling pagination."
+      queries:
+        - query: "SELECT * FROM person LIMIT 10 START 50;"
+    - name: "Limit on an Array"
+      summary: "Applies the limit and start offset to an array literal."
+      queries:
+        - query: "SELECT * FROM [1,2,3,4,5,6,7,8,9,10] LIMIT 5 START 4;"
+    - name: "Usage with ONLY clause"
+      summary: "Ensures a query returns at most one record to satisfy the ONLY clause requirement."
+      queries:
+        - query: "SELECT * FROM ONLY person:jamie;"
+        - query: "SELECT * FROM ONLY person WHERE name = \"Jaime\";"
+        - query: "SELECT * FROM ONLY person WHERE name = \"Jaime\" LIMIT 1;"

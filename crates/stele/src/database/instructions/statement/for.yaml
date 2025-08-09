@@ -1,0 +1,63 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: for
+spec:
+  syntax: |
+    FOR @item IN @iterable {
+    	@block
+    };
+  summary: "Iterates over arrays, ranges, or query results to perform actions for each value."
+  variants:
+    - name: "Iterating over an array"
+      summary: "Iterates over the values of an array to perform actions for each element."
+      syntax: "FOR @item IN @array { @block };"
+      examples:
+        - query: |
+            FOR $name IN ['Tobie', 'Jaime'] {
+            	CREATE type::thing('person', $name) CONTENT {
+            		name: $name
+            	};
+            };
+    - name: "Iterating over a query result"
+      summary: "Iterates over the result of a subquery to perform updates on records."
+      syntax: "FOR @item IN (@subquery) { @block };"
+      examples:
+        - setup:
+            - "CREATE person:1 SET age = 25;"
+            - "CREATE person:2 SET age = 17;"
+          query: |
+            FOR $person IN (SELECT VALUE id FROM person WHERE age >= 18) {
+            	UPDATE $person SET can_vote = true;
+            };
+    - name: "Using ranges in FOR loops"
+      summary: "Iterates over a range of integers."
+      syntax: "FOR @item IN @range { @block };"
+      examples:
+        - query: |
+            FOR $year IN 0..=2024 {
+                CREATE historical_events SET
+                    for_year = $year,
+                    events = "To be added";
+            }
+  features:
+    - name: "Range Iteration Support"
+      summary: "Adds the ability to iterate over numerical ranges."
+      available_since: "v2.0.0"
+    - name: "Limitations of FOR loops"
+      summary: "Highlights known limitations and alternative approaches for certain operations."
+      examples:
+        - query: |
+            LET $table1 = "person";
+            LET $table2 = "cat";
+            FOR $i in 0..1 {
+                CREATE type::thing($table1, $i);
+                CREATE type::thing($table2, $i);
+            };
+        - query: |
+            LET $init = [];
+            FOR $num IN 1..=3 {
+            	$init += $num;
+            };
+            RETURN $init;
+        - query: "(<array>1..=3).reduce(|$one, $two| $one + $two);"

@@ -1,0 +1,136 @@
+{
+  "Conditional": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["Navigate"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "condition": { "type": "string", "description": "Condition expression to evaluate" },
+        "true_block": { "type": "string", "description": "Block ID to execute when condition is true" },
+        "false_block": { "type": "string", "description": "Block ID to execute when condition is false" }
+      },
+      "required": ["condition", "true_block", "false_block"]
+    }
+  },
+  "Decision": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["Navigate"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "options": {
+          "type": "array",
+          "description": "List of possible branches",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": { "type": "string", "description": "Block ID to navigate to" },
+              "condition": { "type": "string", "description": "Condition to evaluate for this branch" }
+            },
+            "required": ["target"]
+          }
+        },
+        "default_target": { "type": "string", "description": "Default block ID if no conditions are met" }
+      },
+      "required": ["options"]
+    }
+  },
+  "Display": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["Navigate"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string", "description": "Content to display, can contain {{state.variable}} templates" },
+        "next_block": { "type": "string", "description": "The next block to execute" }
+      },
+      "required": ["message"]
+    }
+  },
+  "Input": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["AwaitInput"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "prompt": { "type": "string", "description": "Input prompt text" },
+        "target": { "type": "string", "description": "Block ID to execute after input is received" },
+        "input_key": { "type": "string", "description": "State key to store the user's input" }
+      },
+      "required": ["prompt", "target"]
+    }
+  },
+  "Random": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["Navigate"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "options": {
+          "type": "array",
+          "description": "Available options for random selection",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": { "type": "string", "description": "The block ID for this choice" },
+              "weight": { "type": "number", "description": "The numeric weight for this choice" }
+            },
+            "required": ["target", "weight"]
+          }
+        }
+      },
+      "required": ["options"]
+    }
+  },
+  "Interactive": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["AwaitChoice", "Navigate"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "question": { "type": "string", "description": "Interactive prompt text" },
+        "options": {
+          "type": "array",
+          "description": "Available interactive options",
+          "items": {
+            "type": "object",
+            "properties": {
+              "target": { "type": "string", "description": "The block ID to navigate to if chosen" },
+              "label": { "type": "string", "description": "The display text for the option" }
+            },
+            "required": ["target", "label"]
+          }
+        }
+      },
+      "required": ["question", "options"]
+    }
+  },
+  "ExternalData": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["FetchExternalData"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "api_url": { "type": "string", "description": "The URL to fetch data from" },
+        "data_path": { "type": "string", "description": "JSON path to extract data from the response (e.g., 'data.results.0')" },
+        "next_block": { "type": "string", "description": "Block ID to execute after a successful fetch" }
+      },
+      "required": ["api_url", "data_path", "next_block"]
+    }
+  },
+  "GoTo": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["Navigate"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "target": { "type": "string", "description": "Target block identifier" }
+      },
+      "required": ["target"]
+    }
+  },
+  "Compute": {
+    "methods": { "process": { "args": ["state"], "return": { "type": "BlockResult", "variants": ["Navigate", "ExecuteFunction"] } } },
+    "parameters_schema": {
+      "type": "object",
+      "properties": {
+        "expression": { "type": "string", "description": "The expression to evaluate (e.g., 'state.count + 1') or function to call (e.g., 'function:my_func')" },
+        "next_block": { "type": "string", "description": "The next block to execute" },
+        "output_key": { "type": "string", "description": "The state key to store the result in" }
+      },
+      "required": ["expression"]
+    }
+  }
+}

@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+error_messages:
+  invalid_block_type: "INVALID BLOCK TYPE: The specified block type is not valid. Check the error message for the exact invalid type."
+  valid_block_types: "VALID BLOCK TYPES: Display, Input, Compute, Conditional, GoTo, ExternalData. Use these exact names."
+  missing_field: "MISSING REQUIRED FIELD: A required field is missing from the block definition. Check the error message for the exact missing field."
+  required_fields: "REQUIRED FIELDS: 'id', 'name', 'start_block_id', 'blocks'"
+  json_syntax_error: "JSON SYNTAX ERROR: There is an error in the JSON syntax. Fix any commas, brackets, quotes, or other syntax issues."
+  max_iterations_reached: "Flow generation failed: The maximum iteration limit has been reached. Review the prompt and constraints."
+
+feedback_templates:
+  json_parsing_error: |
+    JSON PARSING ERROR (Iteration {iteration}):
+    {parse_error}
+
+    Your response was:
+    ```json\n{response}\n```
+
+    SPECIFIC FIXES NEEDED:
+    {specific_fixes}
+
+    FIX THESE EXACT ISSUES:
+
+  validation_error: |
+    VALIDATION ERRORS:
+    {feedback}
+
+    Your generated JSON was (with syntax highlighting):
+    {flow_definition}
+
+    Fix these specific issues!
+
+  previous_attempt_failed: |
+    {system_prompt}
+
+    User Request: {prompt}
+
+    PREVIOUS ATTEMPT #{iteration} FAILED:
+    {last_error_feedback}
+
+    CRITICAL: Fix these specific issues in your next response.
+
+status_messages:
+  orchestrator_init: "Initialising Flow Orchestrator using simplified architecture"
+  llm_init: "LLM wrapper initialised successfully"
+  schema_provider_init: "Schema provider and validator initialised"
+  demo_flow_registered: "Demo flow definitions pre-registered"
+  starting_generation: "Starting guided flow generation with validation feedback loop"
+  generation_iteration: "Generation iteration {iteration} of {max_iterations}"
+  generation_success: "Guided generation succeeded with validation!"
+  generation_failed: "Guided generation failed: {error}, falling back to basic flow"
+  flow_demonstration: "Demonstrating generated flow: {flow_id}"
+  flow_validation_passed: "Flow validation: PASSED"
+  flow_validation_failed: "Flow validation: FAILED"
+  processing_task: "Processing flow task: {task} (iteration {iteration})"
+  task_analysis: "Task analysis: {analysis}"
+  health_check_start: "Performing comprehensive system health check"
+  health_check_complete: "System health check completed"
+  health_check_failed: "System health check failed: {error}"
+  fallback_flow_created: "Creating fallback flow for task: {task}"
+  all_systems_operational: "All systems operational"
+  system_degraded: "System health: {health} - continuing with available components"

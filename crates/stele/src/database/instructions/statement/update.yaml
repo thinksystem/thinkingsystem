@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: update
+spec:
+  syntax: |
+    UPDATE [ ONLY ] @targets
+    	[ CONTENT @value
+    	  | MERGE @value
+    	  | PATCH @value
+    	  | REPLACE @value
+    	  | [ SET @field = @value, ... | UNSET @field, ... ]
+    	]
+    	[ WHERE @condition ]
+    	[ RETURN NONE | BEFORE | AFTER | DIFF | @fields ... | VALUE @field ]
+    	[ TIMEOUT @duration ]
+    	[ PARALLEL ]
+    	[ EXPLAIN [ FULL ] ]
+    ;
+  summary: "Modifies existing records in the database."
+  variants:
+    - name: SET / UNSET
+      summary: "Modifies specific fields on a record. The `SET` keyword is used to add or change field values, while `UNSET` removes fields entirely. The `+=` and `-=` operators can be used to add/remove items from arrays or increment/decrement numeric values."
+      syntax: "... SET @field = @value, ... | UNSET @field, ..."
+      examples:
+        - query: |
+            UPDATE person SET
+            	dollars = 50,
+            	skills += 'breathing',
+            	enjoys += 'reading',
+            	full_name = name + ' Mc' + name + 'erson';
+        - query: "UPDATE person:tobie SET skills += 'Rust';"
+        - query: "UPDATE person:tobie SET skills -= 'Go', dollars -= 1;"
+        - query: "UPDATE person:tobie UNSET company;"
+    - name: CONTENT
+      summary: "Replaces the entire content of a record with a new object, overwriting all existing fields. Since v2.1.0, this clause bypasses `READONLY` fields without generating an error."
+      syntax: "... CONTENT @value"
+      examples:
+        - query: |
+            UPDATE person:tobie CONTENT {
+            	name: 'Tobie',
+            	company: 'SurrealDB',
+            	skills: ['Rust', 'Go', 'JavaScript'],
+            };
+    - name: REPLACE
+      summary: "Replaces the entire content of a record, similar to `CONTENT`. However, `REPLACE` enforces `READONLY` field constraints and will generate an error if the new content attempts to modify a `READONLY` field."
+      syntax: "... REPLACE @value"
+      examples:
+        - setup:
+            - "DEFINE FIELD created ON person TYPE datetime READONLY;"
+            - "CREATE person:gladys SET created = time::now();"
+          query: "UPDATE person:gladys REPLACE { age: 70 };"
+    - name: MERGE
+      summary: "Deeply merges a given object into a record. New fields are added, and existing fields are updated without replacing the entire record."
+      syntax: "... MERGE @value"
+      examples:
+        - query: |
+            UPDATE person:tobie MERGE {
+            	settings: {
+            		marketing: true,
+            	},
+            };
+    - name: PATCH
+      summary: "Applies a series of modifications to a record using an array of operations that conform to the JSON Patch specification."
+      syntax: "... PATCH @value"
+      examples:
+        - query: |
+            UPDATE person:tobie PATCH [
+            	{ "op": "add", "path": "Engineering", "value": true }
+            ];
+    - name: WHERE
+      summary: "Filters the records to be updated based on a specified condition."
+      syntax: "... WHERE @condition"
+      examples:
+        - query: 'UPDATE person SET skills += "System design" WHERE company != "SurrealDB";'
+    - name: RETURN
+      summary: "Controls what data is returned for each modified record. The default is `AFTER`."
+      syntax: "... RETURN NONE | BEFORE | AFTER | DIFF | @fields ... | VALUE @field"
+      examples:
+        - query: "UPDATE person SET skills += 'reading' RETURN NONE;"
+        - query: "UPDATE person SET skills += 'reading' RETURN DIFF;"
+        - query: "UPDATE person SET skills += 'reading' RETURN BEFORE;"
+        - query: "UPDATE person SET skills += 'reading' RETURN VALUE skills;"
+        - query: "UPDATE person:tobie SET skills = ['skiing', 'music'] RETURN name, skills;"
+    - name: TIMEOUT
+      summary: "Sets a maximum execution time for the statement. If the query exceeds this duration, it is cancelled and returns an error."
+      syntax: "... TIMEOUT @duration"
+      examples:
+        - query: "UPDATE person SET important = true WHERE ->knows->person->(knows WHERE influencer = true) TIMEOUT 5s;"
+    - name: PARALLEL
+      summary: "Instructs the database to execute parts of the query concurrently, which can improve performance for complex updates."
+      syntax: "... PARALLEL"
+      examples:
+        - query: "UPDATE person SET status = 'active' PARALLEL;"
+    - name: EXPLAIN
+      summary: "Returns the query's execution plan instead of performing the update. This is useful for performance analysis. Use `EXPLAIN FULL` for more detailed output."
+      syntax: "... EXPLAIN [ FULL ]"
+      examples:
+        - query: "UPDATE person SET age = age + 1 EXPLAIN;"
+        - query: "UPDATE person SET age = age + 1 EXPLAIN FULL;"

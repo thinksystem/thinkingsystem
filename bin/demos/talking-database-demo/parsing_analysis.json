@@ -1,0 +1,617 @@
+{
+  "total_examples": 72,
+  "successful_parses": 61,
+  "failed_parses": 11,
+  "results": [
+    {
+      "operator_name": "->",
+      "example_title": "Traverse outbound relationships",
+      "query": "SELECT * FROM person->knows;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "->",
+      "example_title": "Traverse specific relationship type",
+      "query": "SELECT * FROM person->knows->person;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<-",
+      "example_title": "Traverse inbound relationships",
+      "query": "SELECT * FROM person<-knows;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<-",
+      "example_title": "Traverse specific inbound relationship",
+      "query": "SELECT * FROM person<-knows<-person;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<->",
+      "example_title": "Bidirectional traversal",
+      "query": "SELECT * FROM person<->knows;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "&&",
+      "example_title": "Two truthy values",
+      "query": "RETURN 'hello' && 1;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "&&",
+      "example_title": "First value is falsy",
+      "query": "RETURN 0 && true;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "||",
+      "example_title": "First value is truthy",
+      "query": "RETURN 'hello' || false;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "||",
+      "example_title": "Both values are falsy",
+      "query": "RETURN NONE || 0;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "!",
+      "example_title": "Negating a truthy value",
+      "query": "RETURN !'hello';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "!",
+      "example_title": "Negating a falsy value",
+      "query": "RETURN !0;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "!!",
+      "example_title": "Casting a truthy value",
+      "query": "RETURN !!'hello';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "!!",
+      "example_title": "Casting a falsy value",
+      "query": "RETURN !!0;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "[]",
+      "example_title": "Array element access",
+      "query": "RETURN ['a', 'b', 'c'][1];",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "[]",
+      "example_title": "Object property access",
+      "query": "RETURN {name: 'John', age: 30}['name'];",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": ".",
+      "example_title": "Object property access",
+      "query": "RETURN {name: 'John', age: 30}.name;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<bool>",
+      "example_title": "Cast string to bool",
+      "query": "RETURN <bool>'hello';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<bool>",
+      "example_title": "Cast number to bool",
+      "query": "RETURN <bool>0;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<int>",
+      "example_title": "Cast string to int",
+      "query": "RETURN <int>'42';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<int>",
+      "example_title": "Cast float to int",
+      "query": "RETURN <int>3.14;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<float>",
+      "example_title": "Cast string to float",
+      "query": "RETURN <float>'3.14';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<string>",
+      "example_title": "Cast number to string",
+      "query": "RETURN <string>42;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<array>",
+      "example_title": "Cast single value to array",
+      "query": "RETURN <array>'hello';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<object>",
+      "example_title": "Cast array to object",
+      "query": "RETURN <object>['a', 'b'];",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": ">",
+      "example_title": "Simple numeric comparison",
+      "query": "RETURN 10 > 5;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": ">=",
+      "example_title": "Simple numeric comparison",
+      "query": "RETURN 5 >= 5;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<",
+      "example_title": "Simple numeric comparison",
+      "query": "RETURN 5 < 10;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "<=",
+      "example_title": "Simple numeric comparison",
+      "query": "RETURN 5 <= 5;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "@",
+      "example_title": "Geometries intersect",
+      "query": "RETURN {type: 'Point', coordinates: [0, 0]} @ {type: 'Polygon', coordinates: [[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]]]};",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `{`, expected an unsigned integer\n --> [1:47]\n  |\n1 | RETURN {type: 'Point', coordinates: [0, 0]} @ {type: 'Polygon', coordinates: ...\n  |                                               ^ \n",
+      "error_type": "Unexpected token: {"
+    },
+    {
+      "operator_name": "<|",
+      "example_title": "Find 5 nearest points",
+      "query": "SELECT * FROM locations WHERE coordinates <|5,0,0| [0, 0];",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `,` expected delimiter `|>`\n --> [1:48]\n  |\n1 | SELECT * FROM locations WHERE coordinates <|5,0,0| [0, 0];\n  |                                                ^ \n --> [1:43]\n  |\n1 | SELECT * FROM locations WHERE coordinates <|5,0,0| [0, 0];\n  |                                           ^^ expected this delimiter to close\n",
+      "error_type": "Unexpected token: ,"
+    },
+    {
+      "operator_name": "...",
+      "example_title": "Spread array elements",
+      "query": "LET $arr = [1, 2, 3]; RETURN [...$arr, 4, 5];",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `...`, expected an expression\n --> [1:31]\n  |\n1 | LET $arr = [1, 2, 3]; RETURN [...$arr, 4, 5];\n  |                               ^^^ \n",
+      "error_type": "Unexpected token: ..."
+    },
+    {
+      "operator_name": "...",
+      "example_title": "Spread object properties",
+      "query": "LET $obj = {a: 1, b: 2}; RETURN {...$obj, c: 3};",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `...`, expected an expression\n --> [1:34]\n  |\n1 | LET $obj = {a: 1, b: 2}; RETURN {...$obj, c: 3};\n  |                                  ^^^ \n",
+      "error_type": "Unexpected token: ..."
+    },
+    {
+      "operator_name": "+∂",
+      "example_title": "Add duration to datetime",
+      "query": "RETURN d'2023-01-01T00:00:00Z' +∂ 1d;",
+      "success": false,
+      "error_message": "Parse error: Invalid token `∂`\n --> [1:33]\n  |\n1 | RETURN d'2023-01-01T00:00:00Z' +∂ 1d;\n  |                                 ^ \n",
+      "error_type": "Invalid token: ∂"
+    },
+    {
+      "operator_name": "-∂",
+      "example_title": "Subtract duration from datetime",
+      "query": "RETURN d'2023-01-02T00:00:00Z' -∂ 1d;",
+      "success": false,
+      "error_message": "Parse error: Invalid token `∂`\n --> [1:33]\n  |\n1 | RETURN d'2023-01-02T00:00:00Z' -∂ 1d;\n  |                                 ^ \n",
+      "error_type": "Invalid token: ∂"
+    },
+    {
+      "operator_name": "+=",
+      "example_title": "Numeric addition assignment",
+      "query": "UPDATE person SET age += 1;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "+=",
+      "example_title": "Array append",
+      "query": "UPDATE person SET skills += 'new_skill';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "-=",
+      "example_title": "Numeric subtraction assignment",
+      "query": "UPDATE person SET age -= 1;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "-=",
+      "example_title": "Array element removal",
+      "query": "UPDATE person SET skills -= 'old_skill';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "IN",
+      "example_title": "Value in array",
+      "query": "RETURN 'apple' IN ['apple', 'banana', 'cherry'];",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "NOT IN",
+      "example_title": "Value not in array",
+      "query": "RETURN 'orange' NOT IN ['apple', 'banana', 'cherry'];",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "CONTAINS",
+      "example_title": "Array contains value",
+      "query": "RETURN ['apple', 'banana', 'cherry'] CONTAINS 'apple';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "NOT CONTAINS",
+      "example_title": "Array does not contain value",
+      "query": "RETURN ['apple', 'banana', 'cherry'] NOT CONTAINS 'orange';",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `CONTAINS`, expected IN\n --> [1:42]\n  |\n1 | RETURN ['apple', 'banana', 'cherry'] NOT CONTAINS 'orange';\n  |                                          ^^^^^^^^ \n",
+      "error_type": "Unexpected token: CONTAINS"
+    },
+    {
+      "operator_name": "INSIDE",
+      "example_title": "Point inside polygon",
+      "query": "RETURN {type: 'Point', coordinates: [0, 0]} INSIDE {type: 'Polygon', coordinates: [[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]]]};",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "NOT INSIDE",
+      "example_title": "Point not inside polygon",
+      "query": "RETURN {type: 'Point', coordinates: [2, 2]} NOT INSIDE {type: 'Polygon', coordinates: [[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]]]};",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `INSIDE`, expected IN\n --> [1:49]\n  |\n1 | RETURN {type: 'Point', coordinates: [2, 2]} NOT INSIDE {type: 'Polygon', coor...\n  |                                                 ^^^^^^ \n",
+      "error_type": "Unexpected token: INSIDE"
+    },
+    {
+      "operator_name": "?",
+      "example_title": "Simple ternary operation",
+      "query": "RETURN 5 > 3 ? 'yes' : 'no';",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `a strand`, expected Eof\n --> [1:16]\n  |\n1 | RETURN 5 > 3 ? 'yes' : 'no';\n  |                ^ \n",
+      "error_type": "Unexpected token: a strand"
+    },
+    {
+      "operator_name": "|>",
+      "example_title": "Chain transformations",
+      "query": "RETURN [1, 2, 3] |> math::sum |> string::uppercase;",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `|>`, expected Eof\n --> [1:18]\n  |\n1 | RETURN [1, 2, 3] |> math::sum |> string::uppercase;\n  |                  ^^ \n",
+      "error_type": "Unexpected token: |>"
+    },
+    {
+      "operator_name": "::",
+      "example_title": "Call namespaced function",
+      "query": "RETURN math::floor(3.7);",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "::",
+      "example_title": "String function",
+      "query": "RETURN string::uppercase('hello');",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "=>",
+      "example_title": "Define arrow function",
+      "query": "LET $add = |$a, $b| => $a + $b; RETURN $add(2, 3);",
+      "success": false,
+      "error_message": "Parse error: Unexpected token `=`, expected an expression\n --> [1:21]\n  |\n1 | LET $add = |$a, $b| => $a + $b; RETURN $add(2, 3);\n  |                     ^ \n",
+      "error_type": "Unexpected token: ="
+    },
+    {
+      "operator_name": "$",
+      "example_title": "Variable reference",
+      "query": "LET $name = 'John'; RETURN $name;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "@",
+      "example_title": "Reference current record",
+      "query": "SELECT *, @.id AS record_id FROM person;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "=",
+      "example_title": "Comparing coerced types",
+      "query": "RETURN '5' = 5;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "!=",
+      "example_title": "Comparing coerced types",
+      "query": "RETURN '5' != 5;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "==",
+      "example_title": "Comparing different types",
+      "query": "RETURN '5' == 5;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "?=",
+      "example_title": "Array contains the value",
+      "query": "RETURN [1, 2, '3'] ?= 3;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "*=",
+      "example_title": "All elements are equal",
+      "query": "RETURN [5, '5'] *= 5;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "..",
+      "example_title": "Create exclusive range",
+      "query": "FOR $i IN 1..5 { RETURN $i; };",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "..=",
+      "example_title": "Create inclusive range",
+      "query": "FOR $i IN 1..=5 { RETURN $i; };",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "+",
+      "example_title": "Numeric addition",
+      "query": "RETURN 5 + 3;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "+",
+      "example_title": "String concatenation",
+      "query": "RETURN 'Hello' + ' World';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "-",
+      "example_title": "Simple subtraction",
+      "query": "RETURN 10 - 3;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "*",
+      "example_title": "Simple multiplication",
+      "query": "RETURN 5 * 3;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "/",
+      "example_title": "Simple division",
+      "query": "RETURN 15 / 3;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "%",
+      "example_title": "Modulo operation",
+      "query": "RETURN 10 % 3;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "??",
+      "example_title": "Left-hand is not null",
+      "query": "RETURN 0 ?? 'default';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "??",
+      "example_title": "Left-hand is null",
+      "query": "RETURN NONE ?? 'default';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "?:",
+      "example_title": "Left-hand is truthy",
+      "query": "RETURN 'hello' ?: 'default';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "?:",
+      "example_title": "Left-hand is falsy",
+      "query": "RETURN 0 ?: 'default';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "**",
+      "example_title": "Simple exponentiation",
+      "query": "RETURN 2 ** 3;",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "~",
+      "example_title": "Regex match",
+      "query": "RETURN 'hello123' ~ '[a-z]+[0-9]+';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "!~",
+      "example_title": "Regex non-match",
+      "query": "RETURN 'hello' !~ '[0-9]+';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    },
+    {
+      "operator_name": "?~",
+      "example_title": "Fuzzy match",
+      "query": "RETURN 'hello' ?~ 'hello';",
+      "success": true,
+      "error_message": null,
+      "error_type": null
+    }
+  ],
+  "unsupported_operators": {
+    "+∂": [
+      "Invalid token: ∂"
+    ],
+    "NOT CONTAINS": [
+      "Unexpected token: CONTAINS"
+    ],
+    "@": [
+      "Unexpected token: {"
+    ],
+    "NOT INSIDE": [
+      "Unexpected token: INSIDE"
+    ],
+    "...": [
+      "Unexpected token: ...",
+      "Unexpected token: ..."
+    ],
+    "?": [
+      "Unexpected token: a strand"
+    ],
+    "=>": [
+      "Unexpected token: ="
+    ],
+    "|>": [
+      "Unexpected token: |>"
+    ],
+    "<|": [
+      "Unexpected token: ,"
+    ],
+    "-∂": [
+      "Invalid token: ∂"
+    ]
+  },
+  "success_rate": 84.72222
+}

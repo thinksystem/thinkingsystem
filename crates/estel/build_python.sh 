@@ -1,0 +1,10 @@
+#!/bin/bash
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Create python_helpers directory if it doesn't exist
+mkdir -p python_helpers
+
+# Install required Python packages
+pip install pandas plotly
+
+echo "Python environment setup complete!"

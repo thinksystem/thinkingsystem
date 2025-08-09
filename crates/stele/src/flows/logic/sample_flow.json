@@ -1,0 +1,122 @@
+{
+  "id": "appointment_flow",
+  "name": "Schedule Appointment Flow",
+  "start_block_id": "input_match",
+  "blocks": [
+    {
+      "id": "input_match",
+      "block_type": {
+        "Input": "request_matcher"
+      },
+      "properties": {
+        "prompt": "When would you like to schedule?",
+        "next_block": "oauth_auth"
+      }
+    },
+    {
+      "id": "oauth_auth",
+      "block_type": {
+        "ExternalData": "oauth"
+      },
+      "properties": {
+        "source": "oauth_provider",
+        "mapping": {
+          "auth_url": "${auth_url}",
+          "token_url": "${token_url}",
+          "client_id": "${client_id}",
+          "client_secret": "${client_secret}",
+          "scope": ["calendar.read", "calendar.write"]
+        },
+        "next_block": "calendar_check"
+      }
+    },
+    {
+      "id": "calendar_check",
+      "block_type": {
+        "Interactive": "calendar_api"
+      },
+      "properties": {
+        "prompt": "Checking calendar availability",
+        "options": {
+          "graph_url": "${graph_url}",
+          "time_zone": "${time_zone}",
+          "calendar_operations": [
+            "get_calendar_list",
+            "get_event_list",
+            "get_slot_list",
+            "create_schedule"
+          ]
+        },
+        "next_block": "availability_decision"
+      }
+    },
+    {
+      "id": "availability_decision",
+      "block_type": {
+        "Conditional": "slot_checker"
+      },
+      "properties": {
+        "condition": "slot_available == true",
+        "true_block": "slot_computation",
+        "false_block": "no_slots_display"
+      }
+    },
+    {
+      "id": "slot_computation",
+      "block_type": {
+        "Random": "time_slots"
+      },
+      "properties": {
+        "options": ["compute_slots", "compute_endtime"],
+        "weights": [0.7, 0.3],
+        "parameters": {
+          "start_datetime": "${requested_start}",
+          "end_datetime": "${requested_end}",
+          "interval": "30m",
+          "duration": "1h"
+        },
+        "next_block": "confirmation_display"
+      }
+    },
+    {
+      "id": "confirmation_display",
+      "block_type": {
+        "Display": "success_message"
+      },
+      "properties": {
+        "content": "Appointment scheduled for ${computed_slot}",
+        "next_block": "end_flow"
+      }
+    },
+    {
+      "id": "no_slots_display",
+      "block_type": {
+        "Display": "failure_message"
+      },
+      "properties": {
+        "content": "No available slots found",
+        "next_block": "retry_decision"
+      }
+    },
+    {
+      "id": "retry_decision",
+      "block_type": {
+        "Decision": "retry_flow"
+      },
+      "properties": {
+        "options": ["retry", "cancel"],
+        "default": "retry",
+        "next_block": "input_match"
+      }
+    },
+    {
+      "id": "end_flow",
+      "block_type": {
+        "GoTo": "terminator"
+      },
+      "properties": {
+        "target": "terminate"
+      }
+    }
+  ]
+}

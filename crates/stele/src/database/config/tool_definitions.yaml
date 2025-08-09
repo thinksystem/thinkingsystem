@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Defines the set of tools (functions) that the LLM can use to construct a query plan.
+# This file is the bridge between natural language and the structured query builder.
+
+tools:
+  - name: "find_entities"
+    description: "Finds entities based on a search term. The term can be a general category (like 'systems'), a specific name (like 'Algorithm Delta-7'), or a keyword. This should almost always be the first tool used for search queries."
+    parameters:
+      type: "object"
+      properties:
+        search_term:
+          type: "string"
+          description: "The category, name, or keyword to search for. Examples: 'systems', 'ice cream', 'Algorithm Delta-7'."
+      required: ["search_term"]
+
+  - name: "filter_by_relationship"
+    description: "Adds a constraint that the primary entities must have a specific relationship to another entity. Use this for phrases like 'connected to', 'related to', 'derived from', etc."
+    parameters:
+      type: "object"
+      properties:
+        relationship_type:
+          type: "string"
+          description: "The type of relationship or edge label. Examples: 'DERIVED_FROM', 'HAS_SUBJECT', 'HAS_OBJECT', 'LOCATED_IN', 'USES'."
+        target_entity_type:
+          type: "string"
+          description: "The type of the entity on the other side of the relationship."
+        target_entity_name:
+          type: "string"
+          description: "The name of the entity on the other side of therelationship."
+      required: ["relationship_type", "target_entity_type", "target_entity_name"]
+
+  - name: "filter_by_confidence"
+    description: "Filters results based on a confidence score. Use for words like 'reliable', 'high confidence', 'trustworthy', 'certain', or 'low confidence'."
+    parameters:
+      type: "object"
+      properties:
+        min_score:
+          type: "number"
+          description: "The minimum confidence score (0.0 to 1.0). For 'high confidence', use a value like 0.8. For 'low confidence', use 0.3."
+      required: ["min_score"]
+
+  - name: "filter_by_temporal"
+    description: "Adds a time-based constraint to the query. Use for words like 'before', 'after', 'during', 'when', or any mention of dates or times."
+    parameters:
+      type: "object"
+      properties:
+        operator:
+          type: "string"
+          enum: ["before", "after", "during"]
+          description: "The temporal comparison to perform."
+        date_or_event:
+          type: "string"
+          description: "The specific date, time, or event name to compare against (e.g., '2024-01-01', 'the project launch')."
+      required: ["operator", "date_or_event"]
+
+  - name: "set_result_limit"
+    description: "Specifies the maximum number of results to return. Use for phrases like 'top 5', 'give me 10', 'how many'."
+    parameters:
+      type: "object"
+      properties:
+        count:
+          type: "number"
+          description: "The maximum number of results."
+      required: ["count"]
+
+  - name: "set_result_order"
+    description: "Specifies the sorting order for the results. Use for words like 'newest', 'oldest', 'latest', 'highest', 'lowest'."
+    parameters:
+      type: "object"
+      properties:
+        field:
+          type: "string"
+          description: "The field to sort by. Common fields are 'properties.confidence' or 'created_at'."
+        direction:
+          type: "string"
+          enum: ["ASC", "DESC"]
+          description: "The sort direction. Use 'DESC' for 'newest' or 'highest'. Use 'ASC' for 'oldest' or 'lowest'."
+      required: ["field", "direction"]
+
+  - name: "request_source_traceability"
+    description: "Indicates that the query requires information about the original source or utterance. Use for words like 'source', 'origin', 'derived from', 'trace'."
+    parameters:
+      type: "object"
+      properties: {}

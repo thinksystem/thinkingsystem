@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: delete
+spec:
+  syntax: |
+    DELETE [ FROM | ONLY ] @targets
+    	[ WHERE @condition ]
+    	[ RETURN NONE | RETURN BEFORE | RETURN AFTER | RETURN DIFF | RETURN @fields ... ]
+    	[ TIMEOUT @duration ]
+    	[ PARALLEL ]
+    	[ EXPLAIN [ FULL ] ];
+  summary: "Deletes records or graph edges from the database."
+  variants:
+    - name: Default
+      summary: "Deletes records based on target, condition, and can return deleted data."
+      syntax: "DELETE [ FROM | ONLY ] @targets [ WHERE @condition ] [ RETURN ... ] [ TIMEOUT ... ] [ PARALLEL ] [ EXPLAIN ... ]"
+      examples:
+        - query: |
+            -- Delete all records from the person table
+            DELETE person;
+
+            -- Delete a single record with a specific ID
+            DELETE person:tobie;
+        - setup:
+            - "CREATE person:tobie SET name = 'Tobie';"
+          query: "DELETE ONLY person:tobie RETURN BEFORE;"
+        - setup:
+            - "CREATE user:1 SET age = 17, interests = ['gaming'];"
+            - "CREATE user:2 SET age = 25, interests = ['reading'];"
+          query: |
+            -- Delete users with an interest in 'reading' and return their data before deletion.
+            DELETE user WHERE interests CONTAINS 'reading' RETURN BEFORE;
+        - setup:
+            - "CREATE cat:one SET age = 4;"
+            - "CREATE cat:two;"
+          query: |
+            -- This deletes every cat that has an 'age' field.
+            DELETE cat WHERE age;
+        - setup:
+            - "CREATE person:tobie; CREATE product:iphone;"
+            - "RELATE person:tobie->bought->product:iphone;"
+          query: "DELETE person:tobie->bought WHERE out = product:iphone;"
+        - query: "DELETE person WHERE ->knows->person->(knows WHERE influencer = false) TIMEOUT 5s;"
+  features:
+    - name: "Simulating Soft Deletions with Events"
+      summary: "Use database events to capture deleted data for archival or logging purposes."
+      examples:
+        - query: |
+            DEFINE EVENT archive_person ON TABLE person WHEN $event = "DELETE" THEN {
+                CREATE deleted_person SET
+                    data = $before,
+                    deleted_at = time::now()
+            };
+        - query: "CREATE person:1, person:2, person:3;"
+        - query: "DELETE person:1;"
+        - query: "SELECT * FROM person;"
+        - query: "SELECT * FROM deleted_person;"
+    - name: "Using the EXPLAIN clause"
+      summary: "Returns the query's execution plan instead of performing the deletion."
+      examples:
+        - query: "EXPLAIN DELETE person WHERE name = 'Tobie';"

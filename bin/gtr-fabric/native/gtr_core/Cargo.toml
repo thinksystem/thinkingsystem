@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "gtr_core"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "gtr_core"
+crate-type = ["cdylib", "rlib"]
+
+# Features no longer needed; NIF code always compiled
+[features]
+default = []
+
+[dependencies]
+rustler = { workspace = true, features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+rand = "0.8"
+serde_json = "1.0"
+uuid = { version = "1.10.0", features = ["v4"] }
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Workspace crates
+steel = { path = "../../../../crates/steel", default-features = false, features = ["fabric_min"] }

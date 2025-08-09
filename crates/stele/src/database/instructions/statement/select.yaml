@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: select
+spec:
+  syntax: |
+    SELECT [ VALUE | ... ] @projections
+    	FROM [ ONLY ] @targets
+    	[ WITH ... ]
+    	[ WHERE ... ]
+    	[ SPLIT ... ]
+    	[ GROUP ... ]
+    	[ ORDERBY ... ]
+    	[ LIMIT ... ] [ START ... ]
+    	[ FETCH ... ]
+    	[ TIMEOUT ... ]
+    	[ PARALLEL ]
+    	[ EXPLAIN ... ]
+    ;
+  summary: "The SELECT statement is used for querying and retrieving data from a database."
+  variants:
+    - name: "Default"
+      summary: "Selects specific fields or all fields from a target, returning an array of objects."
+      syntax: "SELECT @fields FROM @target;"
+      examples:
+        - query: "SELECT * FROM person;"
+    - name: "VALUE"
+      summary: "Returns the raw values of a single selected field as an array, instead of an array of objects."
+      syntax: "SELECT VALUE @field FROM @target;"
+      examples:
+        - query: "SELECT VALUE name FROM person;"
+    - name: "ONLY"
+      summary: "Ensures that the query returns a single object directly, rather than an array containing one object."
+      syntax: "SELECT ... FROM ONLY @target;"
+      examples:
+        - query: "SELECT * FROM ONLY person:tobie;"
+  features:
+    - name: "Time-Travel Queries with VERSION"
+      available_since: "v2.0.0"
+      examples:
+        - query: "SELECT * FROM user:john VERSION '2024-08-19T08:00:00Z';"

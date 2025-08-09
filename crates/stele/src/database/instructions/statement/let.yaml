@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: let
+spec:
+  syntax: "LET $@parameter [: @type_name] = @value;"
+  summary: "Assigns a value to a parameter, which can then be referenced in subsequent operations."
+  variants:
+    - name: "Default"
+      summary: "Assigns a value to a parameter, which can then be referenced in subsequent operations."
+      syntax: "LET $@parameter [: @type_name] = @value;"
+      examples:
+        - query: |
+            LET $name = "tobie";
+            CREATE person SET name = $name;
+        - setup:
+            - "CREATE person:1 SET age = 25;"
+            - "CREATE person:2 SET age = 17;"
+          query: |
+            LET $adults = SELECT * FROM person WHERE age > 18;
+            UPDATE $adults SET can_vote = true;
+        - query: |
+            LET $num = 10;
+            LET $num_type =
+                    IF type::is::int($num)     { "integer" }
+                    ELSE IF type::is::decimal($num) { "decimal" }
+                    ELSE IF type::is::float($num)   { "float"   };
+            RETURN $num_type;
+  features:
+    - name: "Typed Parameters"
+      available_since: "v2.0.0"
+    - name: "Multiple Types for Parameters"
+    - name: "Pre-defined and Protected Parameters"
+    - name: "Anonymous Functions (Closures)"

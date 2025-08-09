@@ -1,0 +1,23 @@
+# Rust formatting configuration
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"
+use_small_heuristics = "Default"
+imports_layout = "Mixed"
+reorder_imports = true
+reorder_modules = true
+fn_params_layout = "Tall"
+brace_style = "SameLineWhere"
+trailing_comma = "Vertical"
+trailing_semicolon = true
+space_before_colon = false
+space_after_colon = true
+spaces_around_ranges = false
+merge_derives = true
+use_try_shorthand = true
+use_field_init_shorthand = true
+color = "Auto"
+edition = "2021"
+emit_mode = "Files"
+make_backup = false

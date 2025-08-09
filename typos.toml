@@ -1,0 +1,43 @@
+# typos.toml - British Spelling Configuration
+# Allows external library APIs while enforcing British spelling for internal code
+
+[default.extend-words]
+# Internal code should use British spelling
+analyze = "analyse"
+analyzer = "analyser"
+initialize = "initialise"
+normalize = "normalise"
+optimize = "optimise"
+specialized = "specialised"
+# Allow external library method names
+normalized = "normalized"  # egui::Vec2 method
+recognized = "recognized"
+authorized = "authorized"
+
+[default.extend-identifiers]
+# Allow external library identifiers
+Serialize = "Serialize"
+Deserialize = "Deserialize" 
+DeserializeOwned = "DeserializeOwned"
+Color32 = "Color32"
+colored_label = "colored_label"
+Center = "Center"
+CENTER = "CENTER"
+CENTER_CENTER = "CENTER_CENTER"
+centered_and_justified = "centered_and_justified"
+color_contrast = "color_contrast"
+validate_color = "validate_color"
+check_color_contrast = "check_color_contrast"
+finalize = "finalize"
+ANALYZER = "ANALYZER"
+
+[files]
+# Include source files but exclude build artifacts
+extend-exclude = [
+    "target/",
+    "*.bak",
+    "_build/",
+    "deps/",
+    ".git/",
+    "*.lock"
+]

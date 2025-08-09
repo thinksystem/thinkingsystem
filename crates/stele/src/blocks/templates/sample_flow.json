@@ -1,0 +1,187 @@
+{
+  "example_flow": {
+    "name": "Schedule Appointment",
+    "start_block_id": "match_input",
+    "blocks": [
+      {
+        "id": "match_input",
+        "type": "Input",
+        "properties": {
+          "prompt": "Please provide your appointment details"
+        },
+        "methods": {
+          "match_input": {
+            "args": ["package", "user", "node", "input", "body"],
+            "kwargs": {}
+          }
+        },
+        "connections": {
+          "next": "oauth_provider"
+        }
+      },
+      {
+        "id": "oauth_provider",
+        "type": "ExternalData",
+        "properties": {
+          "api_url": "https://oauth.example.com/token",
+          "data_path": "$.access_token",
+          "auth_url": "{{auth_url}}",
+          "token_url": "{{token_url}}",
+          "client_id": "{{client_id}}",
+          "client_secret": "{{client_secret}}",
+          "scope": [],
+          "next_block": "schedule_appointment"
+        },
+        "methods": {
+          "authorisation_url": {
+            "args": ["redirect_uri", "user_id"],
+            "kwargs": {}
+          },
+          "fetch_token": {
+            "args": ["redirect_uri", "authorisation_response"],
+            "kwargs": {}
+          },
+          "build_oauth": {
+            "args": ["token"],
+            "kwargs": {}
+          },
+          "is_authorized": {
+            "args": ["oauth"],
+            "kwargs": {}
+          },
+          "is_expired": {
+            "args": ["user_id", "token"],
+            "kwargs": {}
+          },
+          "refresh_token": {
+            "args": ["user_id", "token"],
+            "kwargs": {}
+          }
+        },
+        "connections": {
+          "next": "schedule_appointment"
+        }
+      },
+      {
+        "id": "schedule_appointment",
+        "type": "ExternalData",
+        "properties": {
+          "api_url": "https://graph.microsoft.com/v1.0/me/events",
+          "data_path": "$.value",
+          "oauth_component": "oauth_provider",
+          "scope": [],
+          "graph_url": "{{graph_url}}",
+          "time_zone": "{{time_zone}}",
+          "next_block": "check_availability"
+        },
+        "methods": {
+          "auth_providers": {
+            "args": ["package", "user"],
+            "kwargs": {}
+          },
+          "on_execute": {
+            "args": ["package", "user", "data"],
+            "kwargs": {}
+          },
+          "on_search": {
+            "args": ["package", "user", "node", "query"],
+            "kwargs": {}
+          },
+          "create_schedule": {
+            "args": ["oauth", "user", "data"],
+            "kwargs": {}
+          },
+          "create_slot": {
+            "args": ["oauth", "calendar_id", "start", "end", "slot_id", "data"],
+            "kwargs": {}
+          },
+          "book_schedule": {
+            "args": ["oauth", "oauth_user", "data"],
+            "kwargs": {}
+          },
+          "get_calendar_list": {
+            "args": ["oauth", "query"],
+            "kwargs": {}
+          },
+          "get_event_list": {
+            "args": ["oauth", "query", "calendar_id"],
+            "kwargs": {}
+          },
+          "get_slot_list": {
+            "args": ["oauth", "query", "calendar_id", "select_group_id"],
+            "kwargs": {}
+          },
+          "compute_slots": {
+            "args": [
+              "start_datetime",
+              "end_datetime",
+              "interval"
+            ],
+            "kwargs": {
+              "all_day": false
+            }
+          },
+          "compute_endtime": {
+            "args": ["start_time", "duration"],
+            "kwargs": {}
+          }
+        },
+        "connections": {
+          "next": "check_availability"
+        }
+      },
+      {
+        "id": "check_availability",
+        "type": "Conditional",
+        "properties": {
+          "condition": "state.is_available == true",
+          "true_block": "compute_slots",
+          "false_block": "end"
+        },
+        "methods": {
+          "is_free": {
+            "args": ["oauth", "calendar_id", "start", "end"],
+            "kwargs": {}
+          }
+        },
+        "connections": {
+          "true": "compute_slots",
+          "false": "end"
+        }
+      },
+      {
+        "id": "compute_slots",
+        "type": "Compute",
+        "properties": {
+          "expression": "compute_available_slots(anchor_date, from_date, to_date)"
+        },
+        "methods": {
+          "compute_slots": {
+            "args": [
+              "anchor_date",
+              "from_date",
+              "to_date",
+              "start_time",
+              "end_time",
+              "duration",
+              "interval",
+              "boundary"
+            ],
+            "kwargs": {}
+          }
+        },
+        "connections": {
+          "next": "end"
+        }
+      },
+      {
+        "id": "end",
+        "type": "Compute",
+        "properties": {
+          "expression": "\"Appointment scheduling process completed\""
+        },
+        "methods": {}
+      }
+    ]
+  }
+}

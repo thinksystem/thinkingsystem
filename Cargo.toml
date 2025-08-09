@@ -1,0 +1,162 @@
+[workspace]
+resolver = "2"
+members = [ "bin/thinking-system", "bin/demos/agent-orchestration-demo", "bin/demos/vm-demo", "bin/demos/ffi-demo", "bin/demos/scribes-demo", "bin/demos/estel-chart-demo", "bin/demos/data-exchange-iam-demo", "bin/demos/telegram-messaging-demo", "bin/demos/basic-database-demo", "bin/demos/talking-database-demo", "bin/demos/flows-demo", "crates/steel", "crates/stele", "crates/sleet", "crates/estel", "crates/llm-contracts", "libs/utils", "libs/protocols", "bin/demos/sleet-demo", "bin/demos/runtime-demo", "bin/demos/orchestration-demo", "bin/demos/flow-fabric-demo", "bin/gtr-fabric/native/gtr_core",]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = [ "Thinking Systems Project",]
+license = "AGPL-3.0"
+repository = "https://github.com/steelts/thinkingsystem"
+
+[workspace.dependencies]
+once_cell = "1.21"
+serde_json = "1.0.142"
+serde_yml = "0.0.12"
+serde_yaml = "0.9"
+anyhow = "1.0"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+log = "0.4"
+async-trait = "0.1"
+futures = "0.3"
+futures-core = "0.3"
+pin-project-lite = "0.2"
+tokio-stream = "0.1"
+axum = "0.8.4"
+tower = "0.5"
+tonic = "0.14"
+prost = "0.14"
+neo4rs = "0.9.0-rc.6"
+petgraph = "0.8"
+indexmap = "2.10"
+wasmtime = "35.0"
+wat = "1.236"
+dynasmrt = "3.2"
+dynasm = "3.2"
+lazy_static = "1.5"
+rayon = "1.10"
+bson = "2.15"
+toml = "0.9"
+rust_decimal = "1.37"
+sqlparser = "0.58"
+regex = "1.11"
+unicode-normalization = "0.1"
+percent-encoding = "2.3"
+askama_escape = "0.13"
+evalexpr = "12.0"
+rdkafka = "0.38"
+paho-mqtt = "0.13"
+dotenvy = "0.15"
+metrics = "0.24"
+notify = "8.2"
+url = "2.5"
+tempfile = "3.20"
+rand = "0.8"
+rand_distr = "0.4"
+# Cryptographic dependencies
+ed25519-dalek = "2.2"
+sha2 = "0.10"
+sha3 = "0.10"
+blake3 = "1.8"
+ring = "0.17"
+p256 = "0.13"
+k256 = "0.13"
+# Additional crypto utilities
+base64 = "0.22"
+hex = "0.4"
+zeroize = "1.8"
+iroh = "0.91.1"
+eframe = "0.32"
+egui = "0.32"
+wiremock = "0.6"
+fake = "4.4"
+tokio-test = "0.4"
+config = "0.15"
+tonic-build = "0.14"
+jsonwebtoken = "9.3"
+rustler = "0.36.2"
+# Additional common dependencies
+tracing-appender = "0.2"
+tokio-util = "0.7"
+glow = "0.16"
+aes-gcm = "0.10"
+fxhash = "0.2"
+md5 = "0.8"
+dashmap = "6.1.0"
+
+[workspace.dependencies.tokio]
+version = "1.47"
+features = [ "full",]
+
+[workspace.dependencies.serde]
+version = "1.0.219"
+features = [ "derive",]
+
+[workspace.dependencies.uuid]
+version = "1.17"
+features = [ "v4", "serde",]
+
+[workspace.dependencies.chrono]
+version = "0.4.41"
+features = [ "serde",]
+
+[workspace.dependencies.reqwest]
+version = "0.12.22"
+features = [ "blocking", "json", "stream",]
+
+[workspace.dependencies.surrealdb]
+version = "2.3"
+features = [ "kv-mem",]
+
+[workspace.dependencies.sqlx]
+version = "0.8"
+features = [ "runtime-tokio-rustls", "postgres", "sqlite",]
+
+[workspace.dependencies.moka]
+version = "0.12"
+features = [ "future",]
+
+[workspace.dependencies.time]
+version = "0.3"
+features = [ "formatting",]
+
+[workspace.dependencies.clap]
+version = "4.5"
+features = [ "derive",]
+
+[workspace.dependencies.steel]
+path = "crates/steel"
+
+[workspace.dependencies.stele]
+path = "crates/stele"
+
+[workspace.dependencies.sleet]
+path = "crates/sleet"
+
+[workspace.dependencies.thinking-utils]
+path = "libs/utils"
+
+[workspace.dependencies.thinking-protocols]
+path = "libs/protocols"
+
+[workspace.dependencies.llm-contracts]
+path = "crates/llm-contracts"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+missing_docs_in_private_items = "deny"
+missing_safety_doc = "deny"
+undocumented_unsafe_blocks = "deny"
+cargo_common_metadata = "warn"
+multiple_crate_versions = "warn"
+large_types_passed_by_value = "warn"
+trivially_copy_pass_by_ref = "warn"
+cognitive_complexity = "warn"
+type_complexity = "warn"
+too_many_arguments = "allow"
+module_name_repetitions = "allow"
+similar_names = "allow"

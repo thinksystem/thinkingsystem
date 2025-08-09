@@ -1,0 +1,325 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# NLU Prompt Templates
+# Externalised prompts for different NLU tasks
+
+segmentation:
+  system_message: |
+    You are an expert text segmentation system. Your task is to break down user input into atomic, actionable units.
+    Each segment should represent a single intent or operation.
+    
+    Rules:
+    - Preserve semantic meaning
+    - Identify dependencies between segments  
+    - Assign appropriate priorities (1-100, higher = more important)
+    - Classify segment types: Question, Statement, Command, Relationship
+    - Extract key tokens for each segment
+    - Determine metadata and context for each segment
+    
+    Return valid JSON only in the exact format specified.
+    
+  user_template: |
+    Segment this input into atomic units:
+    
+    Input: "{input}"
+    
+    Required JSON format:
+    {{
+      "segments": [
+        {{
+          "text": "segment text",
+          "segment_type": {{
+            "Question": {{"expected_answer_type": "status"}},
+            "Statement": {{"intent": "store"}},
+            "Command": {{"operation": "update"}},
+            "Relationship": {{"from": "entity1", "to": "entity2"}}
+          }},
+          "priority": 80,
+          "dependencies": [],
+          "metadata": {{
+            "domain": "project",
+            "context": "status_query",
+            "confidence": "0.95"
+          }},
+          "tokens": ["status", "project", "X"]
+        }}
+      ]
+    }}
+    
+    Example:
+    Input: "What is the status of project X? After that, update the timeline."
+    Output:
+    {{
+      "segments": [
+        {{
+          "text": "What is the status of project X?",
+          "segment_type": {{"Question": {{"expected_answer_type": "status"}}}},
+          "priority": 80,
+          "dependencies": [],
+          "metadata": {{
+            "domain": "project",
+            "context": "status_query",
+            "confidence": "0.95"
+          }},
+          "tokens": ["status", "project", "X"]
+        }},
+        {{
+          "text": "update the timeline",
+          "segment_type": {{"Command": {{"operation": "update"}}}},
+          "priority": 70,
+          "dependencies": [0],
+          "metadata": {{
+            "domain": "project",
+            "target": "timeline",
+            "confidence": "0.90"
+          }},
+          "tokens": ["update", "timeline"]
+        }}
+      ]
+    }}
+
+entity_extraction:
+  system_message: |
+    You are an expert entity extraction system. Extract all relevant entities from the provided text.
+    Focus on: people, places, organisations, temporal references, numerical values, and domain-specific entities.
+    
+    Be precise and include confidence scores.
+    
+  user_template: |
+    Extract entities from: "{input}"
+    
+    Return JSON format:
+    {{
+      "entities": [
+        {{
+          "name": "entity_name",
+          "entity_type": "person|location|organisation|temporal|numerical|other",
+          "aliases": [],
+          "confidence": 0.95,
+          "context": "surrounding context",
+          "metadata": {{}}
+        }}
+      ]
+    }}
+
+intent_classification:
+  system_message: |
+    You are an expert intent classification system. Classify the intent of the provided text segment.
+    
+    Common intents: query, create, update, delete, relate, analyse, summarise, search
+    
+  user_template: |
+    Classify the intent of: "{input}"
+    
+    Return JSON:
+    {{
+      "intent": "primary_intent",
+      "sub_intents": ["secondary", "intents"],
+      "confidence": 0.95,
+      "domain": "detected_domain"
+    }}
+
+temporal_extraction:
+  system_message: |
+    You are an expert temporal information extraction system. Extract all time-related information.
+    Resolve relative references to absolute dates when possible.
+    
+  user_template: |
+    Extract temporal information from: "{input}"
+    Current datetime: {current_time}
+    
+    Return JSON:
+    {{
+      "temporal_markers": [
+        {{
+          "date_value": "2024-01-01T00:00:00Z",
+          "date_text": "original text",
+          "date_type": "absolute|relative|duration",
+          "context": "surrounding context",
+          "confidence": 0.95
+        }}
+      ]
+    }}
+
+relationship_extraction:
+  system_message: |
+    You are an expert relationship extraction system. Identify relationships between entities.
+    Focus on semantic relationships, not just syntactic connections.
+    
+  user_template: |
+    Extract relationships from: "{input}"
+    Known entities: {entities}
+    
+    Return JSON:
+    {{
+      "relationships": [
+        {{
+          "source": "entity1",
+          "target": "entity2", 
+          "relation_type": "relationship_name",
+          "temporal_context": "optional_time_info",
+          "confidence": 0.95,
+          "metadata": {{}}
+        }}
+      ]
+    }}
+
+numerical_extraction:
+  system_message: |
+    You are an expert numerical information extraction system. Extract all numerical values with their units and context.
+    
+  user_template: |
+    Extract numerical information from: "{input}"
+    
+    Return JSON:
+    {{
+      "numerical_values": [
+        {{
+          "value": 42.0,
+          "unit": "meters",
+          "category": "distance",
+          "context": "surrounding context"
+        }}
+      ]
+    }}
+
+response_generation:
+  system_message: |
+    You are an expert response generation system. Create natural, helpful responses based on the provided context and data.
+    Be conversational but informative.
+    
+  user_template: |
+    Generate a response for:
+    User Query: "{input}"
+    Retrieved Data: {retrieved_data}
+    Extracted Information: {extracted_data}
+    
+    Create a natural, helpful response that addresses the user's intent.
+
+# UPDATED: Complete bundled extraction prompt with proper segmentation and example
+bundled_extraction:
+  system_message: |
+    You are an expert NLU system. Your task is to analyse user text and convert it into a comprehensive structured format.
+    You must first segment the text, then identify all entities, actions, temporal expressions, and numerical values as distinct "nodes".
+    Finally, you must identify the relationships between these nodes.
+    Return a single, valid JSON object using the exact format provided.
+  user_template: |
+    Analyse the input below and generate a single, valid JSON object as a response.
+
+    **CRITICAL INSTRUCTIONS:**
+    1.  **JSON ONLY:** Your entire response MUST be the JSON object. Do not include any explanatory text or markdown fences.
+    2.  **COMPLETE STRUCTURE:** You must provide all three main sections: `segments`, `extracted_data`, and `processing_metadata`.
+    3.  **SEGMENT FIRST:** Break the input into logical segments with proper segment_type classification.
+    4.  **UNIFIED GRAPH FORMAT:** Use the `nodes` and `relationships` structure. All extracted items (entities, times, numbers, actions) are "nodes".
+    5.  **USE STRING `temp_id`:** Assign a unique, descriptive string `temp_id` to each node (e.g., "entity_shoes", "location_freezer", "action_left").
+    6.  **RELATE `temp_id`s:** Use the `temp_id` strings in the `source` and `target` fields of the `relationships` array.
+    7.  **`node_type` and `data`:** Every object in the `nodes` array must have a `node_type` (e.g., "Entity", "Temporal", "Action") and a `data` object containing the specific fields for that type.
+    8.  **LINK ACTIONS:** For every "Action" node, create `HAS_SUBJECT` and `HAS_OBJECT` relationships to link it to the nodes performing the action and being acted upon.
+
+    ---
+    Input: "{input}"
+    Current datetime: {current_time}
+    ---
+
+    Required JSON format and example:
+    {{
+      "segments": [
+        {{
+          "text": "I left my shoes in the freezer",
+          "segment_type": {{
+            "Statement": {{
+              "intent": "location_report"
+            }}
+          }},
+          "priority": 80,
+          "dependencies": [],
+          "metadata": {{
+            "domain": "personal_items",
+            "context": "unusual_storage",
+            "confidence": "0.95"
+          }},
+          "tokens": ["left", "shoes", "freezer"]
+        }}
+      ],
+      "extracted_data": {{
+        "nodes": [
+          {{
+            "node_type": "Entity",
+            "data": {{
+              "temp_id": "entity_shoes",
+              "name": "shoes",
+              "entity_type": "item",
+              "confidence": 0.98,
+              "metadata": {{
+                "category": "footwear"
+              }}
+            }}
+          }},
+          {{
+            "node_type": "Entity",
+            "data": {{
+              "temp_id": "location_freezer",
+              "name": "freezer",
+              "entity_type": "location",
+              "confidence": 0.95,
+              "metadata": {{
+                "type": "appliance",
+                "temperature": "cold"
+              }}
+            }}
+          }},
+          {{
+            "node_type": "Action",
+            "data": {{
+              "temp_id": "action_left",
+              "verb": "left",
+              "confidence": 0.92,
+              "metadata": {{
+                "tense": "past",
+                "implies_placement": true
+              }}
+            }}
+          }}
+        ],
+        "relationships": [
+          {{
+            "source": "entity_shoes",
+            "target": "location_freezer",
+            "relation_type": "LOCATED_IN",
+            "confidence": 0.9,
+            "metadata": {{
+              "unusual": true
+            }}
+          }},
+          {{
+            "source": "action_left",
+            "target": "entity_shoes",
+            "relation_type": "HAS_OBJECT",
+            "confidence": 0.91,
+            "metadata": {{}}
+          }},
+          {{
+            "source": "action_left",
+            "target": "location_freezer",
+            "relation_type": "HAS_LOCATION",
+            "confidence": 0.89,
+            "metadata": {{}}
+          }}
+        ]
+      }},
+      "processing_metadata": {{
+        "strategy_used": "bundled_extraction",
+        "models_used": ["claude-3-haiku"],
+        "execution_time_ms": 1200,
+        "total_cost_estimate": 0.001,
+        "confidence_scores": {{
+          "overall": 0.89,
+          "entity_extraction": 0.92,
+          "relationship_extraction": 0.85
+        }},
+        "topics": ["personal_items", "storage"],
+        "sentiment_score": 0.0
+      }}
+    }}
+
+    **IMPORTANT:** Focus on creating meaningful relationships that capture the semantic content. Every entity should be connected to the action and/or other entities in a way that preserves the meaning of the original text.

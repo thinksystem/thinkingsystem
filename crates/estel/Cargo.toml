@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "estel"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[features]
+default = []
+symbolic = []
+intent = []
+# uses a hyphen in module gate; feature names can include hyphens
+data-handler = []
+# opt-in learned scorer head for re-ranking
+learned-scorer = []
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+csv = "1.3.1"
+eframe = "0.32.0"
+egui = "0.32.0"
+env_logger = "0.11.8"
+itertools = "0.14.0"
+rayon.workspace = true
+regex.workspace = true
+rfd = "0.15.4"
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+
+[dependencies.polars]
+version = "0.49.1"
+features = [
+    "lazy",
+    "csv",
+    "parquet",
+    "json",
+    "strings",
+    "temporal",
+    "dtype-datetime",
+    "dtype-date"
+]
+
+[lib]
+name = "estel"
+path = "src/lib.rs"
+
+[dev-dependencies]
+proptest = "1.7.0"
+tempfile = "3.20.0"

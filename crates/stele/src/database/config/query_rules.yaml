@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+version: 1.0
+description: "High-level manifest for SurrealQL query construction rules."
+
+schema_definition:
+  file: "src/database/config/database_schema.sql"
+  description: "Defines all tables, fields, types, and indexes."
+
+statements:
+  - name: "SELECT"
+    description: "Used for retrieving data from the database."
+    triggers: ["find", "get", "show", "list", "query", "retrieve", "select", "what is", "who is", "how are"]
+    rule_file: "src/database/reference/statements/select.yaml"
+
+operators:
+  - name: "full_text_search"
+    description: "High-performance indexed text search."
+    triggers: ["search for", "find text", "matches text", "contains word", "about"]
+    rule_file: "src/database/reference/operators/full_text.yaml"
+
+best_practices:
+  - id: "BP001"
+    rule: "Prefer Full-Text Search (`@@`) over Fuzzy Matching (`~`) for text searches on indexed fields."
+  - id: "BP002"
+    rule: "Use subqueries to isolate Full-Text Search filtering before performing graph traversals."
+  - id: "BP003"
+    rule: "Always specify `LIMIT 1` when a subquery is expected to define a single variable."

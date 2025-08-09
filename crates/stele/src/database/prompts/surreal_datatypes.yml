@@ -1,0 +1,179 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+prompts:
+  idiom:
+    prompt: |
+      Extract idiom patterns from the following input:
+      - Identify field access patterns (.)
+      - Detect array indexing []
+      - Find method chains
+      - Parse graph traversal patterns (->)
+      - Identify optional chaining (?)
+      - Extract recursive paths ({n})
+      - Detect destructuring patterns
+      Return complete idiom structure with all parts identified.
+
+  array:
+    prompt: |
+      Parse array structures from input:
+      - Detect array literals []
+      - Identify if array is a set
+      - Extract max length constraints
+      - Handle nested arrays
+      - Parse array operations (filter, map)
+      Return complete array structure with elements.
+
+  boolean:
+    prompt: |
+      Parse boolean values:
+      - Handle true/false in any case
+      - Capture original text representation
+      - Identify boolean operations
+      Return boolean token with value and metadata.
+
+  datetime:
+    prompt: |
+      Parse datetime values:
+      - Handle ISO-8601 formats
+      - Extract timezone information
+      - Identify precision level
+      - Parse duration modifications
+      Return datetime token with full temporal information.
+
+  closure:
+    prompt: |
+      Parse closure definitions:
+      - Extract parameter lists
+      - Identify return types
+      - Parse closure bodies
+      - Handle type constraints
+      Return closure token with complete structure.
+
+  cast:
+    prompt: |
+      Parse type casting operations:
+      - Identify target types
+      - Handle multiple possible types
+      - Parse nested type casts
+      - Validate cast compatibility
+      Return cast token with type information.
+
+  future:
+    prompt: |
+      Parse future expressions:
+      - Identify <future> declarations
+      - Extract dependent fields
+      - Parse dynamic computations
+      - Handle nested future expressions
+      Return future token with dependencies.
+
+  geometry:
+    prompt: |
+      Parse the following input for GeoJSON geometry data:
+      - Identify geometry type (Point, LineString, Polygon, etc.)
+      - Extract coordinates in proper format
+      - Validate GeoJSON structure
+      - Check for tuple format points (-0.118092, 51.509865)
+      - Ensure no extra properties exist in geometry objects
+      Return structured geometry data with type and coordinates.
+
+  nullable:
+    prompt: |
+      Analyse the following input for NONE and NULL values:
+      - Identify any fields explicitly set to NONE (case insensitive)
+      - Identify any fields explicitly set to NULL (case insensitive)
+      - For each identified field, extract:
+        - Field name
+        - Whether it's NONE or NULL
+        - Context of usage (CREATE, UPDATE, etc.)
+      Return structured data about nullable fields and their states.
+
+  record_id:
+    prompt: |
+      Parse record IDs:
+      - Extract table names
+      - Handle complex identifiers
+      - Parse object/array-based IDs
+      - Identify generated IDs (rand/ulid/uuid)
+      - Validate record ID formats
+      Return record ID token with full structure.
+
+  literal:
+    prompt: |
+      Parse literal definitions:
+      - Handle multiple possible values
+      - Parse composite literals
+      - Extract type constraints
+      - Validate literal combinations
+      - Support all SurrealQL literal types
+      Return literal token with all variants.
+
+  formatter:
+    prompt: |
+      Parse format specifiers:
+      - Identify format type (date/time/timezone)
+      - Extract specifier pattern
+      - Include example output
+      - Validate format compatibility
+      - Handle custom format strings
+      Return formatter token with complete info.
+
+  number:
+    prompt: |
+      Parse numeric values:
+      - Detect integer vs float vs decimal
+      - Handle numeric suffixes (dec, f)
+      - Parse mathematical constants (MATH::PI etc)
+      - Maintain full precision for decimals
+      - Support scientific notation
+      Return number token with type and value.
+
+  object:
+    prompt: |
+      Parse object structures:
+      - Handle nested objects
+      - Track object depth
+      - Parse key-value pairs
+      - Support mixed value types
+      - Validate object schema
+      Return object token with complete structure.
+
+  range:
+    prompt: |
+      Parse range expressions:
+      - Handle inclusive/exclusive bounds (.., ..=)
+      - Support open-ended ranges
+      - Parse numeric and non-numeric ranges
+      - Handle range operators (>, ..)
+      - Validate range bounds
+      Return range token with bounds and inclusivity info.
+
+  string:
+    prompt: |
+      Parse string values:
+      - Handle single and double quotes
+      - Detect string prefixes (s, r, d, u)
+      - Support Unicode and emoji
+      - Handle multiline strings
+      - Parse string escapes
+      Return string token with complete metadata.
+
+  uuid:
+    prompt: |
+      Parse UUID values:
+      - Validate UUID v4 and v7 formats
+      - Handle string prefix 'u'
+      - Support casting with <uuid>
+      - Extract timestamp from v7
+      - Validate UUID structure
+      Return UUID token with version info.
+
+  set:
+    prompt: |
+      Parse set structures:
+      - Handle deduplication
+      - Track element types
+      - Support type constraints
+      - Handle set operations
+      - Validate set membership
+      Return set token with complete structure.

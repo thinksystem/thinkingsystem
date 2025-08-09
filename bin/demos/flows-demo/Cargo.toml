@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "flows-demo"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "flows-demo"
+path = "src/main.rs"
+
+[dependencies]
+# Internal crates
+stele = { path = "../../../crates/stele" }
+steel = { path = "../../../crates/steel" }
+llm-contracts = { path = "../../../crates/llm-contracts" }
+
+# External dependencies (using workspace deps where possible)
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+toml.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+reqwest.workspace = true
+clap.workspace = true
+dotenvy = "0.15"
+surrealdb = { workspace = true, features = ["kv-mem"] }

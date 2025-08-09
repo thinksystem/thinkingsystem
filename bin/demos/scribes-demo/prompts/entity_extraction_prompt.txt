@@ -1,0 +1,15 @@
+Extract named entities from the following text and categorise them:
+
+Text: "{text}"
+
+Provide the result in JSON format:
+{{
+    "entities": [
+        {{"text": "entity_name", "category": "PERSON/ORGANIZATION/LOCATION/CONCEPT", "confidence": 0.9}}
+    ],
+    "relationships": [
+        {{"entity1": "A", "entity2": "B", "relationship": "type", "confidence": 0.8}}
+    ]
+}}
+
+Respond only with valid JSON.

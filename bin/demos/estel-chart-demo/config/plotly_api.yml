@@ -1,0 +1,539 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# This YAML schema is aligned with the Plotly Python API, primarily focusing on the high-level plotly.express (px) module.
+# It corrects argument names and consolidates conceptual charts into their base functions as per the official API structure.
+charts:
+  # === PART 1: PLOTLY EXPRESS - CORE VISUALISATIONS ===
+
+  # --- 1.1: Relationship & Trend Charts ---
+  - name: scatter
+    library: plotly
+    description: "Shows the relationship between two numeric variables. Set 'size' for a bubble chart, 'trendline' for a regression plot, or 'animation_frame' for an animation."
+    tags:
+      [
+        "relationship",
+        "correlation",
+        "scatter",
+        "bubble",
+        "regression",
+        "animation",
+      ]
+    args:
+      x: { data_type: [Numeric, Temporal, Categorical], required: true }
+      y: { data_type: [Numeric, Temporal, Categorical], required: true }
+      color: { data_type: [Numeric, Categorical], required: false }
+      symbol: { data_type: Categorical, required: false }
+      size:
+        {
+          data_type: Numeric,
+          required: false,
+          description: "Setting this creates a bubble chart.",
+        }
+      text: { data_type: Categorical, required: false }
+      hover_name: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+      marginal_x:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "e.g., 'histogram', 'box', 'violin', 'rug'",
+        }
+      marginal_y:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "e.g., 'histogram', 'box', 'violin', 'rug'",
+        }
+      trendline:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "e.g., 'ols', 'lowess'. Creates a regression plot.",
+        }
+      animation_frame: { data_type: [Temporal, Categorical], required: false }
+      animation_group: { data_type: Categorical, required: false }
+
+  - name: line
+    library: plotly
+    description: "Shows a numeric value changing over a continuous variable, usually time."
+    tags: ["trend", "timeseries", "temporal", "line"]
+    args:
+      x: { data_type: [Temporal, Numeric], required: true }
+      y: { data_type: Numeric, required: true }
+      color: { data_type: Categorical, required: false }
+      line_dash: { data_type: Categorical, required: false }
+      line_group:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "Connects points into lines for each group.",
+        }
+      text: { data_type: Categorical, required: false }
+      hover_name: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  - name: area
+    library: plotly
+    description: "A line chart where the area between the line and axis is filled. Ideal for showing cumulative totals."
+    tags: ["trend", "timeseries", "volume", "area", "cumulative"]
+    args:
+      x: { data_type: [Temporal, Numeric], required: true }
+      y: { data_type: Numeric, required: true }
+      color: { data_type: Categorical, required: false }
+      line_group: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  # --- 1.2: Categorical & Proportional Charts ---
+  - name: bar
+    library: plotly
+    description: "Compares a numeric value across different categories. Can be animated with 'animation_frame'."
+    tags: ["comparison", "categorical", "bar", "ranking", "animation"]
+    args:
+      x: { data_type: [Categorical, Temporal, Numeric], required: true }
+      y: { data_type: [Numeric, Categorical], required: true }
+      color: { data_type: [Numeric, Categorical], required: false }
+      pattern_shape: { data_type: Categorical, required: false }
+      text: { data_type: Categorical, required: false }
+      hover_name: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+      animation_frame: { data_type: [Temporal, Categorical], required: false }
+      animation_group: { data_type: Categorical, required: false }
+
+  - name: pie
+    library: plotly
+    description: "Shows parts of a whole. Set the 'hole' argument to create a doughnut chart."
+    tags: ["proportion", "parts-of-whole", "categorical", "pie", "doughnut"]
+    args:
+      names: { data_type: Categorical, required: true }
+      values: { data_type: Numeric, required: true }
+      color: { data_type: Categorical, required: false }
+      hover_name: { data_type: Categorical, required: false }
+      hole:
+        {
+          data_type: Numeric,
+          required: false,
+          description: "Value from 0 to 1. Creates a doughnut chart.",
+        }
+
+  # --- 1.3: Distribution Charts ---
+  - name: histogram
+    library: plotly
+    description: "Shows the distribution of a single numeric variable by binning data."
+    tags: ["distribution", "frequency", "histogram", "statistical"]
+    args:
+      x: { data_type: Numeric, required: true }
+      y:
+        {
+          data_type: Numeric,
+          required: false,
+          description: "Use for pre-binned data.",
+        }
+      color: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  - name: box
+    library: plotly
+    description: "Shows a statistical summary (min, quartiles, max) of a numeric variable, optionally grouped by category."
+    tags: ["distribution", "summary", "statistical", "box", "outlier"]
+    args:
+      x: { data_type: Categorical, required: false }
+      y: { data_type: Numeric, required: true }
+      color: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+      points:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "'all', 'outliers', or false.",
+        }
+
+  - name: violin
+    library: plotly
+    description: "Shows the shape of a numeric distribution (Kernel Density Estimate) combined with a box plot."
+    tags: ["distribution", "density", "statistical", "violin"]
+    args:
+      x: { data_type: Categorical, required: false }
+      y: { data_type: Numeric, required: true }
+      color: { data_type: Categorical, required: false }
+      box:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "Set to true to show inner box plot.",
+        }
+      points:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "'all', 'outliers', or false.",
+        }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  - name: strip
+    library: plotly
+    description: "A 1D scatter plot showing every point in a distribution, often with jitter."
+    tags: ["distribution", "individual points", "strip", "jitter"]
+    args:
+      x: { data_type: Categorical, required: false }
+      y: { data_type: Numeric, required: true }
+      color: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  - name: ecdf
+    library: plotly
+    description: "Shows the Empirical Cumulative Distribution Function of a numeric variable."
+    tags: ["distribution", "cumulative", "statistical", "ecdf"]
+    args:
+      x: { data_type: Numeric, required: true }
+      color: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  # --- 1.4: 2D Distribution Charts (for large datasets) ---
+  - name: density_heatmap
+    library: plotly
+    description: "Shows the 2D distribution of two numeric variables as a smoothed heatmap (Kernel Density Estimate)."
+    tags: ["distribution", "density", "heatmap", "2d", "overplotting"]
+    args:
+      x: { data_type: Numeric, required: true }
+      y: { data_type: Numeric, required: true }
+      z:
+        {
+          data_type: Numeric,
+          required: false,
+          description: "Values for aggregation.",
+        }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  - name: density_contour
+    library: plotly
+    description: "Shows the 2D distribution of two numeric variables as contour lines. Can be overlaid on other plots."
+    tags: ["distribution", "density", "contour", "2d", "overplotting"]
+    args:
+      x: { data_type: Numeric, required: true }
+      y: { data_type: Numeric, required: true }
+      z:
+        {
+          data_type: Numeric,
+          required: false,
+          description: "Values for aggregation.",
+        }
+      color: { data_type: Categorical, required: false }
+      facet_row: { data_type: Categorical, required: false }
+      facet_col: { data_type: Categorical, required: false }
+
+  # --- 1.5: Hierarchical Charts ---
+  - name: treemap
+    library: plotly
+    description: "Shows hierarchical data using nested rectangles. Hierarchy is defined by 'path' or 'ids' and 'parents'."
+    tags: ["hierarchy", "proportion", "treemap", "nested"]
+    args:
+      path:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "List of columns defining hierarchy.",
+        }
+      ids: { data_type: Categorical, required: false }
+      parents: { data_type: Categorical, required: false }
+      names:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "Column for segment labels.",
+        }
+      values: { data_type: Numeric, required: true }
+      color: { data_type: [Numeric, Categorical], required: false }
+      hover_name: { data_type: Categorical, required: false }
+
+  - name: sunburst
+    library: plotly
+    description: "Shows hierarchical data using nested rings. Hierarchy is defined by 'path' or 'ids' and 'parents'."
+    tags: ["hierarchy", "proportion", "sunburst", "nested", "radial"]
+    args:
+      path:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "List of columns defining hierarchy.",
+        }
+      ids: { data_type: Categorical, required: false }
+      parents: { data_type: Categorical, required: false }
+      names:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "Column for segment labels.",
+        }
+      values: { data_type: Numeric, required: true }
+      color: { data_type: [Numeric, Categorical], required: false }
+      hover_name: { data_type: Categorical, required: false }
+
+  # --- 1.6: Multi-Dimensional Charts ---
+  - name: scatter_matrix
+    library: plotly
+    description: "Creates a matrix of scatter plots (SPLOM) for pairwise relationships between multiple numeric variables."
+    tags: ["multivariate", "pairwise", "correlation", "scatter", "matrix"]
+    args:
+      dimensions:
+        {
+          data_type: Numeric,
+          required: true,
+          description: "List of column names to plot.",
+        }
+      color: { data_type: Categorical, required: false }
+      symbol: { data_type: Categorical, required: false }
+
+  - name: parallel_coordinates
+    library: plotly
+    description: "Visualises multivariate numeric data on parallel axes. Good for spotting clusters and patterns."
+    tags: ["multivariate", "pattern", "cluster", "parallel", "numeric"]
+    args:
+      dimensions:
+        {
+          data_type: Numeric,
+          required: true,
+          description: "List of column names for axes.",
+        }
+      color: { data_type: [Numeric, Categorical], required: false }
+
+  - name: parallel_categories
+    library: plotly
+    description: "Visualises multivariate categorical data, showing flow and frequency between categories."
+    tags: ["multivariate", "flow", "categorical", "parallel", "alluvial"]
+    args:
+      dimensions:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "List of column names for axes.",
+        }
+      color: { data_type: Numeric, required: false }
+
+  # --- 1.7: Specialised & Business Charts ---
+  - name: funnel
+    library: plotly
+    description: "Shows stages in a process, like a sales funnel."
+    tags: ["business", "funnel", "conversion", "process"]
+    args:
+      x: { data_type: Numeric, required: false }
+      y: { data_type: Categorical, required: false }
+      names:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "Use with 'values' for funnel_area style.",
+        }
+      values:
+        {
+          data_type: Numeric,
+          required: false,
+          description: "Use with 'names' for funnel_area style.",
+        }
+      color: { data_type: Categorical, required: false }
+
+  - name: timeline
+    library: plotly
+    description: "Creates a timeline or Gantt chart to show tasks or events over a period."
+    tags: ["project", "schedule", "gantt", "timeline", "temporal"]
+    args:
+      x_start: { data_type: Temporal, required: true }
+      x_end: { data_type: Temporal, required: true }
+      y:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "Task names or categories.",
+        }
+      color: { data_type: Categorical, required: false }
+      text: { data_type: Categorical, required: false }
+
+  # --- 1.8: Geographic Charts ---
+  - name: scatter_geo
+    library: plotly
+    description: "Plots points on a geographic map using latitude/longitude or location names."
+    tags: ["map", "geospatial", "scatter", "location"]
+    args:
+      lat: { data_type: Numeric, required: false }
+      lon: { data_type: Numeric, required: false }
+      locations:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "Location names or codes.",
+        }
+      locationmode: { data_type: Categorical, required: false }
+      color: { data_type: [Numeric, Categorical], required: false }
+      size: { data_type: Numeric, required: false }
+      hover_name: { data_type: Categorical, required: false }
+      animation_frame: { data_type: [Temporal, Categorical], required: false }
+
+  - name: line_geo
+    library: plotly
+    description: "Draws lines or paths on a geographic map."
+    tags: ["map", "geospatial", "path", "route", "line"]
+    args:
+      lat: { data_type: Numeric, required: false }
+      lon: { data_type: Numeric, required: false }
+      locations: { data_type: Categorical, required: false }
+      line_group:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "Column to group points into lines.",
+        }
+      color: { data_type: Categorical, required: false }
+
+  - name: choropleth
+    library: plotly
+    description: "Colors geographic regions on a map according to a data variable."
+    tags: ["map", "geospatial", "choropleth", "region", "thematic"]
+    args:
+      locations:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "Region names or codes (e.g., ISO-3).",
+        }
+      locationmode: { data_type: Categorical, required: false }
+      color:
+        {
+          data_type: Numeric,
+          required: true,
+          description: "Variable to map to color.",
+        }
+      hover_name: { data_type: Categorical, required: false }
+      animation_frame: { data_type: [Temporal, Categorical], required: false }
+
+  # --- 1.9: Polar Charts ---
+  - name: scatter_polar
+    library: plotly
+    description: "A scatter plot on a circular, polar coordinate system."
+    tags: ["polar", "radial", "circular", "scatter"]
+    args:
+      r: { data_type: Numeric, required: true }
+      theta: { data_type: [Numeric, Categorical], required: true }
+      color: { data_type: [Numeric, Categorical], required: false }
+      symbol: { data_type: Categorical, required: false }
+      size: { data_type: Numeric, required: false }
+
+  - name: line_polar
+    library: plotly
+    description: "A line plot on a polar coordinate system."
+    tags: ["polar", "radial", "circular", "line"]
+    args:
+      r: { data_type: Numeric, required: true }
+      theta: { data_type: [Numeric, Categorical], required: true }
+      color: { data_type: Categorical, required: false }
+      line_dash: { data_type: Categorical, required: false }
+      line_group: { data_type: Categorical, required: false }
+
+  - name: bar_polar
+    library: plotly
+    description: "A bar chart on a polar coordinate system, often called a rose chart."
+    tags: ["polar", "radial", "circular", "bar", "rose"]
+    args:
+      r: { data_type: Numeric, required: true }
+      theta: { data_type: Categorical, required: true }
+      color: { data_type: [Numeric, Categorical], required: false }
+
+  # === PART 2: PLOTLY GRAPH OBJECTS - SPECIALISED CHARTS ===
+  # These charts are typically created using the lower-level `plotly.graph_objects` (go) API, not `plotly.express`.
+
+  - name: candlestick
+    library: plotly
+    description: "Financial chart showing open, high, low, and close values. Uses plotly.graph_objects."
+    tags: ["financial", "ohlc", "candlestick", "trading"]
+    args:
+      x: { data_type: Temporal, required: true }
+      open: { data_type: Numeric, required: true }
+      high: { data_type: Numeric, required: true }
+      low: { data_type: Numeric, required: true }
+      close: { data_type: Numeric, required: true }
+
+  - name: waterfall
+    library: plotly
+    description: "Shows how an initial value is affected by sequential positive/negative changes. Uses plotly.graph_objects."
+    tags: ["financial", "business", "waterfall", "changes"]
+    args:
+      x: { data_type: Categorical, required: true }
+      y: { data_type: Numeric, required: true }
+      measure:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "Array of 'relative', 'total', 'absolute'.",
+        }
+
+  - name: sankey
+    library: plotly
+    description: "A flow diagram showing weighted connections between nodes. Uses plotly.graph_objects."
+    tags: ["flow", "network", "sankey", "connections"]
+    args:
+      source:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "Indices of source nodes.",
+        }
+      target:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "Indices of target nodes.",
+        }
+      value: { data_type: Numeric, required: true, description: "Flow values." }
+      label:
+        {
+          data_type: Categorical,
+          required: false,
+          description: "Labels for the nodes.",
+        }
+
+  - name: indicator
+    library: plotly
+    description: "Displays a single KPI value, optionally with a delta or gauge. Uses plotly.graph_objects."
+    tags: ["kpi", "business", "dashboard", "indicator", "gauge"]
+    args:
+      value: { data_type: Numeric, required: true }
+      mode:
+        {
+          data_type: Categorical,
+          required: true,
+          description: "e.g., 'number+delta+gauge'.",
+        }
+      delta_reference: { data_type: Numeric, required: false }
+      title: { data_type: Categorical, required: false }
+
+  - name: surface
+    library: plotly
+    description: "A 3D surface plot. Uses plotly.graph_objects."
+    tags: ["3d", "surface", "scientific"]
+    args:
+      z:
+        {
+          data_type: Numeric,
+          required: true,
+          description: "2D array of height values.",
+        }
+      x:
+        {
+          data_type: Numeric,
+          required: true,
+          description: "X-axis numeric values.",
+        }
+      y:
+        {
+          data_type: Numeric,
+          required: true,
+          description: "Y-axis numeric values.",
+        }

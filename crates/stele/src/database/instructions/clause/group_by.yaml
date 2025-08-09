@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: group_by
+spec:
+  syntax: "@query GROUP BY <fields...>"
+  summary: "Aggregates records that have the same values in specified columns into summary rows."
+  variants:
+    - name: "Group by Multiple Columns"
+      summary: "Calculates an aggregate value for each unique combination of multiple columns."
+      setup:
+        - "CREATE sales:1 SET product_id = 'p1', region = 'eu', amount = 100;"
+        - "CREATE sales:2 SET product_id = 'p1', region = 'us', amount = 150;"
+        - "CREATE sales:3 SET product_id = 'p2', region = 'eu', amount = 200;"
+        - "CREATE sales:4 SET product_id = 'p1', region = 'eu', amount = 50;"
+        - "CREATE sales:5 SET product_id = 'p2', region = 'us', amount = 250;"
+      queries:
+        - query: "SELECT product_id, region, math::sum(amount) AS total_sales FROM sales GROUP BY product_id, region ORDER BY product_id, region;"

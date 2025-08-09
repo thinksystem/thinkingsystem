@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: access
+
+spec:
+  syntax: |
+    ACCESS @name [ ON [ ROOT | NAMESPACE | DATABASE ] ] [
+    	GRANT ...
+    	| SHOW ...
+    	| REVOKE ...
+    	| PURGE ...
+    ]
+  summary: "Manages access grants for generating, showing, revoking, and purging access grants."
+  documentation:
+    description: "The ACCESS statement manages access grants. It provides the ability to generate, show,revoke, and purge access grants using defined access methods like bearer keys."
+    notes:
+      - "EXPERIMENTAL: The ACCESS statement is an experimental feature for validating its suitability and security. It may have breaking changes and unidentified security issues. Do not use in production. To enable, set the `SURREAL_EXPERIMENTAL_BEARER_ACCESS` environment variable to `true`."
+      - "By default, ACCESS references methods at the current scope (set by `USE`). The `ON` clause can specify a different scope (ROOT, NAMESPACE, DATABASE)."
+      - "Operations that create, revoke, or purge grants are logged at the `INFO` level or higher, identified by the `surrealdb_core::sql::statements::access` prefix."
+  variants:
+    - name: Grant
+      summary: "Creates and returns a grant for a subject (a system user or a record user). The grant's secret is returned only upon creation."
+      syntax: "ACCESS @name [ ON ... ] GRANT [ FOR USER @name | FOR RECORD @record ]"
+      # Examples removed as they are not parsable by the default SQL parser.
+      examples: []
+    - name: Show
+      summary: "Displays the details of grants for a specific access method. Secrets are redacted."
+      syntax: "ACCESS @name [ ON ... ] SHOW [ GRANT @id | ALL | WHERE @expression ]"
+      examples: []
+    - name: Revoke
+      summary: "Revokes grants, making them unusable for authentication. The revocation time is recorded."
+      syntax: "ACCESS @name [ ON ... ] REVOKE [ GRANT @id | ALL | WHERE @expression ]"
+      examples: []
+    - name: Purge
+      summary: "Permanently removes grants that are already expired or revoked."
+      syntax: "ACCESS @name [ ON ... ] PURGE [ EXPIRED | REVOKED [ , EXPIRED | REVOKED ] ] [ FOR @duration ]"
+      examples: []
+  features:
+    - name: "Availability"
+      summary: "The ACCESS statement is available since version v2.2.0."
+    - name: "Improving Error Output with THROW"
+      summary: "Use the `THROW` statement within a `DEFINE ACCESS` definition to return custom, user-friendly error messages during signup or signin processes."
+      examples:
+        - query: |
+            DEFINE ACCESS account ON DATABASE TYPE RECORD
+                SIGNUP ({
+                    IF $email = "me@me.com" {
+                        THROW "That's my email!!!"
+                    } ELSE {
+                        CREATE user SET email = $email, pass = crypto::argon2::generate($pass)
+                    }
+                })
+                SIGNIN ( SELECT * FROM user WHERE email = $email AND crypto::argon2::compare(pass, $pass) )
+                DURATION FOR TOKEN 15m, FOR SESSION 12h;

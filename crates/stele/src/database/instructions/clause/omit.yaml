@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: omit
+spec:
+  syntax: "@query OMIT <fields...>"
+  summary: "Omits specified fields from the result set."
+  variants:
+    - name: "Standard Field Omission"
+      summary: "Omit a comma-separated list of top-level and nested fields."
+      setup:
+        - |
+          CREATE person:tobie SET
+          	name = 'Tobie',
+          	password = '123456',
+          	opts.security = 'secure',
+          	opts.enabled = true;
+        - |
+          CREATE person:jaime SET
+          	name = 'Jaime',
+          	password = 'asdfgh',
+          	opts.security = 'secure',
+          	opts.enabled = false;
+      queries:
+        - query: "SELECT * FROM person;"
+        - query: "SELECT * OMIT password, opts.security FROM person;"
+    - name: "Omission with Destructuring"
+      summary: "Use destructuring syntax to omit multiple fields from a nested object."
+      setup:
+        - |
+          CREATE person:tobie SET
+          	name = 'Tobie',
+          	password = '123456',
+          	opts.security = 'secure',
+          	opts.enabled = true;
+        - |
+          CREATE person:jaime SET
+          	name = 'Jaime',
+          	password = 'asdfgh',
+          	opts.security = 'secure',
+          	opts.enabled = false;
+      queries:
+        - query: "SELECT * OMIT password, opts.{ security, enabled } FROM person;"
+  features:
+    - name: "Destructuring Syntax"
+      available_since: "2.0.0"

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: sleep
+spec:
+  syntax: "SLEEP @duration;"
+  summary: "Introduces a delay or pause in the execution of a query or a batch of queries for a specific amount of time."
+  variants:
+    - name: "Default"
+      summary: "Introduces a delay or pause in execution for a specified duration."
+      syntax: "SLEEP @duration;"
+      examples:
+        - query: "SLEEP 1s;"
+        - query: "SLEEP 100ms;"

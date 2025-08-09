@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "thinking-system"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "thinking-system"
+path = "src/main.rs"
+
+[dependencies]
+# Core architecture layers
+steel = { path = "../../crates/steel" }
+stele = { path = "../../crates/stele" }
+sleet = { path = "../../crates/sleet" }
+estel = { path = "../../crates/estel" }
+
+# Utility libraries
+utils = { path = "../../libs/utils" }
+protocols = { path = "../../libs/protocols" }
+
+# System dependencies
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

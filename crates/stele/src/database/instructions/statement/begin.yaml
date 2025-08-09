@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: begin
+spec:
+  syntax: "BEGIN [ TRANSACTION ]; ... [ COMMIT | CANCEL ] [ TRANSACTION ];"
+  summary: "Runs a group of statements inside a single atomic transaction."
+  variants:
+    - name: "Basic Transaction"
+      summary: "Executes a block of statements atomically, committing all changes at the end."
+      syntax: "BEGIN [ TRANSACTION ]; ... COMMIT [ TRANSACTION ];"
+      examples:
+        - query: |
+            BEGIN TRANSACTION;
+
+            CREATE account:one SET balance = 135605.16;
+
+            CREATE account:two SET balance = 91031.31;
+
+            UPDATE account:one SET balance += 300.00;
+
+            UPDATE account:two SET balance -= 300.00;
+
+            COMMIT TRANSACTION;
+    - name: "Early Return or Throw"
+      summary: "Exits a transaction early with a custom value or error, while still requiring a final COMMIT or CANCEL."
+      syntax: "BEGIN; ... [ RETURN <value> | THROW <message> ]; ... [ COMMIT; | CANCEL; ]"
+      examples:
+        - setup:
+            - "CREATE account:one SET balance = 135605.16;"
+            - "CREATE account:two SET balance = 91031.31, wants_to_send_money = true;"
+          query: |
+            BEGIN;
+
+            IF !account:two.wants_to_send_money {
+                THROW "Customer doesn't want to send any money!";
+            };
+
+            LET $first = UPDATE ONLY account:one SET balance += 300.00;
+            LET $second = UPDATE ONLY account:two SET balance -= 300.00;
+
+            RETURN "Money sent! Status:\n" + <string>$first + '\n' + <string>$second;
+
+            COMMIT;

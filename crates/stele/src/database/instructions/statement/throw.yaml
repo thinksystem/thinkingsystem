@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: throw
+spec:
+  syntax: "THROW @error;"
+  summary: "Explicitly raises an error, aborting current execution and returning the specified error value."
+  variants:
+    # ... (keep existing variants)
+  features:
+    - name: "Cancelling a Transaction"
+      # ... (keep existing example)
+    - name: "Conditional Rollback" # NEW: Add the moved variant here as a feature
+      summary: "Shows the recommended pattern for conditionally rolling back a transaction using THROW."
+      syntax: "IF <condition> { THROW <message>; };"
+      examples:
+        - setup:
+            - "CREATE account:one SET balance = 135605.16;"
+            - "CREATE account:two SET balance = 200.31;"
+          query: |
+            BEGIN TRANSACTION;
+
+            UPDATE account:one SET balance += 300.00;
+            UPDATE account:two SET balance -= 300.00;
+
+            IF account:two.balance < 0 {
+                THROW "Not enough funds";
+            };
+
+            COMMIT TRANSACTION;
+    - name: "Providing Custom Error Messages in Access Definitions"
+      examples:
+        - query: |
+            DEFINE ACCESS user ON DATABASE
+                TYPE RECORD
+                SIGNIN (
+                    LET $user = (SELECT * FROM user WHERE username = $username AND crypto::argon2::compare(password, $password));
+                    IF !$user {
+                        THROW "Invalid username or password provided.";
+                    };
+                    RETURN $user;
+                )
+                DURATION FOR SESSION 1w;

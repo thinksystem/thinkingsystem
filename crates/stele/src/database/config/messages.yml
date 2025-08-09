@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+interface:
+  startup_banner: |
+    Enhanced Database Interface with Health Monitoring
+    Commands: store <text>, retrieve <query>, health, exit
+    ----------------------------
+  
+  commands:
+    store_usage: "Usage: store <text>"
+    retrieve_usage: "Usage: retrieve <query>"
+    unknown_command: "Unknown command. Use: store <text>, retrieve <query>, health, or exit"
+  
+  status:
+    text_stored: "✓ Text stored successfully"
+    database_healthy: "✓ Database is healthy"
+    task_status: "  - Task status: {status}"
+    stats: "  - Stats: {stats:?}"
+    retrieved: "✓ Retrieved: {results}"
+    shutting_down: "Shutting down gracefully..."
+    shutdown_complete: "✓ Database interface shut down successfully"
+    initiating_shutdown: "Initiating shutdown sequence..."
+  
+  errors:
+    store_failed: "✗ Error storing text: {error}"
+    retrieve_failed: "✗ Error retrieving content: {error}"
+    health_check_failed: "✗ Database health check failed: {error}"
+    periodic_health_failed: "⚠ Periodic health check failed: {error}"
+    shutdown_failed: "✗ Error during shutdown: {error}"
+    task_stopped: "⚠ Warning: Database task has stopped unexpectedly"
+    attempting_shutdown: "Attempting graceful shutdown..."
+  
+  negotiation:
+    query_failed: "Query failed: {error}"
+    negotiation_failed: "Query negotiation failed: {error}"
+    negotiated_query_failed: "Negotiated query failed: {error}"

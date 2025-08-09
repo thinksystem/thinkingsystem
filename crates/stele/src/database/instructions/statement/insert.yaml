@@ -1,0 +1,102 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: insert
+spec:
+  syntax: |
+    INSERT [ IGNORE | RELATION ] INTO @what
+    	[ @value
+    	| (@fields) VALUES (@values)
+    		[ ON DUPLICATE KEY UPDATE @field = @value ... ]
+    	]
+    	[ RETURN NONE | BEFORE | AFTER | DIFF | @fields ... | VALUE @field ];
+  summary: "Inserts one or more new records, or graph relations, into a table."
+  variants:
+    - name: "Insert with Object Literal"
+      summary: "Inserts a single record using a JSON-like object literal."
+      syntax: "INSERT INTO @what @value;"
+      examples:
+        - query: |
+            INSERT INTO company {
+            	name: 'SurrealDB',
+            	founded: "2021-09-10",
+            	founders: [person:tobie, person:jaime],
+            	tags: ['big data', 'database']
+            };
+    - name: "Insert with VALUES"
+      summary: "Inserts one or more records using a `VALUES` clause."
+      syntax: "INSERT INTO @what (@fields) VALUES (@values) [ ON DUPLICATE KEY UPDATE ... ];"
+      examples:
+        - query: |
+            INSERT INTO
+            	company (name, founded)
+            	VALUES
+            		('Acme Inc.', '1967-05-03'),
+            		('Apple Inc.', '1976-04-01');
+        - setup:
+            - "INSERT INTO city (id, population, at_year) VALUES ('Calgary', 1640000, 2023);"
+          query: |
+            INSERT INTO city (id, population, at_year) VALUES ("Calgary", 1665000, 2024)
+            ON DUPLICATE KEY UPDATE
+            	population = $input.population,
+            	at_year = $input.at_year;
+    - name: "Bulk Insert from Array"
+      summary: "Inserts multiple records in a single query using an array of objects."
+      syntax: "INSERT INTO @what [ @values ];"
+      examples:
+        - query: |
+            INSERT INTO person [
+               { id: "jaime", name: "Jaime", surname: "Morgan Hitchcock" },
+               { id: "tobie", name: "Tobie", surname: "Morgan Hitchcock" }
+            ];
+    - name: "Copy from Subquery"
+      summary: "Copies records from one table to another using a `SELECT` subquery."
+      syntax: "INSERT INTO @what ( @subquery );"
+      examples:
+        - setup:
+            - "CREATE temperature:1 SET city = 'San Francisco', temp = 15;"
+          query: "INSERT INTO recordings_san_francisco (SELECT * FROM temperature WHERE city = 'San Francisco');"
+    - name: "Insert with IGNORE"
+      summary: "Inserts records, silently ignoring any with duplicate IDs."
+      syntax: "INSERT IGNORE INTO @what @value;"
+      examples:
+        - query: |
+            INSERT IGNORE INTO person [
+               { id: "jaime", name: "Jaime", surname: "Morgan Hitchcock" },
+               { id: "tobie", name: "Tobie", surname: "Morgan Hitchcock" },
+               { id: "jaime", name: "Jaime", surname: "Morgan Hitchcock" }
+            ];
+    - name: "Insert Relation"
+      summary: "Creates graph edges (relations) between records."
+      syntax: "INSERT RELATION INTO @table @value;"
+      examples:
+        - setup:
+            - "INSERT INTO person [{ id: 1 }, { id: 2 }];"
+          query: |
+            INSERT RELATION INTO likes {
+            	in: person:1,
+            	out: person:2
+            };
+        - setup:
+            - "INSERT INTO person [{ id: 1 }, { id: 2 }, { id: 3 }];"
+          query: |
+            INSERT RELATION INTO likes [
+            	{ in: person:1, out: person:3 },
+            	{ in: person:2, out: person:3 }
+            ];
+  features:
+    - name: "ON DUPLICATE KEY UPDATE"
+      available_since: "v1.0.0-beta.8"
+    - name: "Controlling Return Values"
+      available_since: "v1.0.0-beta.8"
+      steps:
+        - query: "INSERT INTO company { name: 'SurrealDB' } RETURN NONE;"
+        - query: "INSERT INTO company { name: 'SurrealDB' } RETURN DIFF;"
+        - query: |
+            INSERT INTO person { age: 46, username: "john-smith" }
+            RETURN age, age + 1 AS age_next_year;
+        - query: |
+            INSERT INTO planet [
+              { name: 'Earth', surface_temp: 15 },
+              { name: 'Venus', surface_temp: 462 }
+            ] RETURN VALUE surface_temp;

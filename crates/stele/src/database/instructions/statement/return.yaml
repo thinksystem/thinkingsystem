@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: return
+spec:
+  syntax: "RETURN @value"
+  summary: "Outputs a value explicitly and immediately stops execution of the current context."
+  variants:
+    - name: "Default"
+      summary: "Returns a specified value, which can be a simple value, an object, or the result of a subquery."
+      syntax: "RETURN @value"
+      examples:
+        - query: "RETURN 'Hello, World!';"
+        - query: "RETURN 100;"
+        - query: |
+            RETURN {
+            	user: 'Cody',
+            	role: 'AI Assistant'
+            };
+        - query: "RETURN SELECT * FROM user;"
+        - query: "RETURN (CREATE person SET name = 'Tobie').id;"
+  features:
+    - name: "Setting a Transaction's Return Value"
+      summary: "Defines the final value to be returned at the end of a transaction."
+      examples:
+        - query: |
+            BEGIN TRANSACTION;
+            
+            LET $user = CREATE user SET name = 'Jaime';
+            LET $post = CREATE post SET title = 'First Post', author = $user.id;
+            
+            RETURN $post.id;
+            
+            COMMIT TRANSACTION;
+    - name: "Execution Breaking Behaviour"
+      summary: "Immediately stops execution within its scope and returns a value."
+      available_since: "v2.0.0"
+      examples:
+        - query: |
+            DEFINE FUNCTION fn::round::up($num: number) {
+                IF $num % 2 == 0 {
+                    RETURN $num;
+                };
+                RETURN $num + 1;
+            };
+        - query: |
+            BEGIN;
+              RETURN 1;
+              CREATE user;
+            COMMIT;
+        - query: |
+            LET $id = {
+                LET $input_id = 123;
+                IF $input_id {
+                    RETURN type::thing('table', $input_id);
+                };
+                RETURN table:rand();
+            };
+
+            CREATE $id;
