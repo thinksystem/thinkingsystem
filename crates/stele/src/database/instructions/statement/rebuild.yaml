@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: rebuild
+spec:
+  syntax: "REBUILD [ INDEX [ IF EXISTS ] @name ON [ TABLE ] @table ]"
+  summary: "Rebuilds resources in SurrealDB, primarily to optimise index performance."
+  variants:
+    - name: Default
+      summary: "Rebuilds a specified index on a table to optimise its performance."
+      syntax: "REBUILD [ INDEX [ IF EXISTS ] @name ON [ TABLE ] @table ]"
+      examples:
+        - query: "REBUILD INDEX uniq_isbn ON book;"
+        - query: "REBUILD INDEX IF EXISTS uniq_isbn ON book;"
+  features:
+    - name: "Statement Availability"
+      summary: "Defines when the REBUILD statement became available."
+    - name: "IF EXISTS Clause"
+      summary: "Allows the statement to run without error if the index does not exist."

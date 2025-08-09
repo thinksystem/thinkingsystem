@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: order_by
+spec:
+  syntax: "@query ORDER BY @field [ ASC | DESC ] | RAND()"
+  summary: "Sorts the resulting records based on a comma-separated list of fields."
+  features:
+    - name: ASC
+    - name: DESC
+    - name: COLLATE
+    - name: NUMERIC
+    - name: RAND()
+  variants:
+    - name: "Basic Sorting"
+      summary: "Sort records by a single field in ascending or descending order."
+      setup:
+        - "CREATE person:1 SET name = 'Zoe', created_at = '2023-01-15T10:00:00Z';"
+        - "CREATE person:2 SET name = 'Ábel', created_at = '2023-03-20T12:30:00Z';"
+        - "CREATE person:3 SET name = 'Ben', created_at = '2023-02-10T08:45:00Z';"
+      queries:
+        - query: "SELECT name FROM person ORDER BY name ASC;"
+        - query: "SELECT name, created_at FROM person ORDER BY created_at DESC;"
+    - name: "Multi-Field Sorting"
+      summary: "Sort records by multiple fields with independent sort directions."
+      setup:
+        - "CREATE person:1 SET name = 'Zoe', city = 'London', age = 28;"
+        - "CREATE person:2 SET name = 'Ábel', city = 'Paris', age = 35;"
+        - "CREATE person:3 SET name = 'Ben', city = 'London', age = 35;"
+      queries:
+        - query: "SELECT name, city, age FROM person ORDER BY city ASC, age DESC;"
+    - name: "Advanced Text Sorting"
+      summary: "Use COLLATE and NUMERIC for advanced sorting of text fields."
+      setup:
+        - "CREATE person:1 SET name = 'Zoe';"
+        - "CREATE person:2 SET name = 'Ábel';"
+        - "CREATE person:3 SET name = 'Ben';"
+        - "CREATE product:1 SET product_code = 'item-10';"
+        - "CREATE product:2 SET product_code = 'item-2';"
+        - "CREATE product:3 SET product_code = 'item-1';"
+      queries:
+        - query: "SELECT name FROM person ORDER BY name COLLATE ASC;"
+        - query: "SELECT product_code FROM product ORDER BY product_code NUMERIC ASC;"
+    - name: "Random Sorting"
+      summary: "Sort records in a random order using the RAND() function."
+      setup:
+        - "CREATE person:1 SET name = 'Zoe';"
+        - "CREATE person:2 SET name = 'Ábel';"
+        - "CREATE person:3 SET name = 'Ben';"
+      queries:
+        - query: "SELECT name FROM person ORDER BY RAND();"

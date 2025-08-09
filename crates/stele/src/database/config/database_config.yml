@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+health_check:
+  interval_seconds: 30
+  timeout_seconds: 5
+  max_retries: 3
+
+transaction:
+  timeout_seconds: 30
+  max_batch_size: 100
+
+error_handling:
+  max_negotiation_attempts: 3
+  retry_delay_ms: 1000
+  critical_error_threshold: 5

@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "basic-database-demo"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "basic-database-demo"
+path = "src/main.rs"
+
+[dependencies]
+stele = { path = "../../../crates/stele" }
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+dotenvy.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tokio-test.workspace = true

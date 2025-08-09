@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# NLU Model Configuration
+# Defines available LLMs, their capabilities, and performance characteristics.
+
+models:
+  # Fast, cost-effective model for simple tasks and primary extraction
+  - name: claude-3-5-haiku-latest
+    provider: anthropic
+    capabilities:
+
+    speed_tier: fast
+    cost_tier: low
+    max_tokens: 8192
+    parallel_limit: 10
+    temperature: 0.2
+
+  # Balanced, powerful model for complex reasoning and analysis
+  - name: claude-sonnet-4-0
+    provider: anthropic
+    capabilities: 
+      - classification
+      - sentiment
+      - multi_step_analysis
+      - full_extraction
+      - segmentation
+      - tokenization
+      - fast_extraction
+
+    speed_tier: medium
+    cost_tier: medium
+    max_tokens: 64000
+    parallel_limit: 5
+    temperature: 0.2
+
+# Model selection preferences
+selection_strategy:
+  prefer_speed: true
+  fallback_on_failure: true
+  max_retries: 2
+  timeout_seconds: 60

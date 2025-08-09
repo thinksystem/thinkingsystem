@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: fetch
+spec:
+  syntax: "@query FETCH <fields...>"
+  summary: "Retrieves related records or replaces record IDs with their full data in a single query."
+  variants:
+    - name: "Fetching Related Records"
+      summary: "Gathers data linked through relationships like record links or graph edges without multiple separate queries."
+      setup:
+        - "CREATE post:1 SET title = 'First Post';"
+        - "CREATE post:2 SET title = 'Second Post';"
+        - "CREATE person:tobie SET name = 'Tobie', posts = [post:1, post:2];"
+      queries:
+        - query: "SELECT * FROM person;"
+        - query: "SELECT * FROM person FETCH posts;"
+    - name: "Replacing a Single Record ID"
+      summary: "Replaces a single record ID in a field with its actual record value."
+      setup:
+        - "CREATE person:jaime SET name = 'Jaime';"
+        - "CREATE company:surrealdb SET name = 'SurrealDB', founder = person:jaime;"
+      queries:
+        - query: "SELECT * FROM company;"
+        - query: "SELECT * FROM company FETCH founder;"

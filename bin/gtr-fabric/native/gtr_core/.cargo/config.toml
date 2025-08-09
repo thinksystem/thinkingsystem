@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[target.'cfg(target_os = "macos")']
+rustflags = [
+    "-C", "link-arg=-undefined",
+    "-C", "link-arg=dynamic_lookup",
+]

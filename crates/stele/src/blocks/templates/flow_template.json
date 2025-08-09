@@ -1,0 +1,55 @@
+{
+  "example_greeting_flow": {
+    "name": "Example User Greeting Flow",
+    "start_block_id": "start_greeting",
+    "blocks": [
+      {
+        "id": "start_greeting",
+        "type": "Display",
+        "properties": {
+          "message": "Hello, {{state.user.name}}! Welcome back.",
+          "next_block": "check_user_status"
+        }
+      },
+      {
+        "id": "check_user_status",
+        "type": "Conditional",
+        "properties": {
+          "condition": "state.user.is_premium == true",
+          "true_block": "show_premium_offer",
+          "false_block": "show_regular_offer"
+        }
+      },
+      {
+        "id": "show_premium_offer",
+        "type": "Display",
+        "properties": {
+          "message": "As a premium member, you get exclusive deals!",
+          "next_block": "complete_flow"
+        }
+      },
+      {
+        "id": "show_regular_offer",
+        "type": "Display",
+        "properties": {
+          "message": "Check out our latest offers for all users.",
+          "next_block": "complete_flow"
+        }
+      },
+      {
+        "id": "complete_flow",
+        "type": "Compute",
+        "properties": {
+          "expression": "\"Flow completed successfully.\""
+        }
+      },
+      {
+        "id": "default",
+        "type": "Compute",
+        "properties": {
+          "expression": "\"Flow terminated.\""
+        }
+      }
+    ]
+  }
+}

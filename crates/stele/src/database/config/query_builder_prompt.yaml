@@ -1,0 +1,110 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# This file defines the template for the prompt sent to the LLM to generate a structured QueryIntent.
+# The prompt is defined as a list of sections that are assembled in order by the application.
+# This modular structure is easier to read, maintain, and adapt.
+
+# Defines the components and structure of the final prompt.
+prompt_definition:
+  # The sections are processed in order to build the final prompt string.
+  sections:
+    - name: system_role
+      template: |
+        You are an expert database query translator. Your task is to convert natural language questions into structured JSON objects representing SurrealQL queries. You must analyse the actual database schema and data patterns to generate accurate and flexible queries.
+
+    - name: user_query
+      template: |
+        ---
+        ## User's Natural Language Query:
+        "{natural_query}"
+
+    - name: schema_and_data_context
+      template: |
+        ## Database Schema and Data Patterns:
+        
+        ### Primary Table Structure:
+        The main data is stored in a `nodes` table with this structure:
+        ```sql
+        {schema_content}
+        ```
+        
+        ### Data Storage Patterns:
+        **Nodes Table Structure:**
+        - `id`: Unique record identifier
+        - `type`: High-level category (e.g., "concept", "person", "entity", "temporal", "numerical", "action")
+        - `properties`: JSON object containing detailed information
+          - `properties.name`: The display name/label
+          - `properties.entity_type`: Specific subtype (e.g., "theory", "person", "building")
+          - `properties.metadata`: Additional nested information
+          - `properties.confidence`: Confidence score (0.0-1.0)
+        
+        **Important**: The `type` field is broad (concept, entity, person, etc.) while `properties.entity_type` and `properties.metadata.type` contain more specific classifications. A single concept can be identified by any of these fields.
+
+    - name: query_strategy_rules
+      template: |
+        ## Query Strategy Rules:
+        
+        **1. Field Mapping Strategy:**
+        - For names/labels: Search in `properties.name` using the `CONTAINS` operator.
+        - For types/categories (e.g., "person", "place", "theory"): You MUST check `type`, `properties.entity_type`, AND `properties.metadata.type`.
+        - For confidence: Use `properties.confidence`.
+        - For metadata: Look in `properties.metadata.*`.
+        
+        **2. CRITICAL - Use Grouped OR for Type Searches:**
+        When searching for a type or category, you MUST create a single condition group that combines multiple field checks with "OR". This ensures that if any of the fields match, the record is returned. Do NOT use "AND" for these checks.
+        
+        **Example for "find theories":**
+        The query must check `type = 'theory'` OR `properties.entity_type = 'theory'` OR `properties.metadata.type = 'theory'`.
+        This translates to the following JSON structure:
+        ```json
+        {
+          "where_conditions": [
+            {
+              "OR": [
+                { "field": "type", "operator": "=", "value": "theory" },
+                { "field": "properties.entity_type", "operator": "=", "value": "theory" },
+                { "field": "properties.metadata.type", "operator": "=", "value": "theory" }
+              ]
+            }
+          ]
+        }
+        ```
+
+    - name: final_instruction
+      template: |
+        ---
+        Based on the natural language query and database schema above, generate a JSON object that will find the relevant data. Prioritise recall over precision—it's better to return extra results than to miss relevant ones.
+        
+        Your response MUST contain ONLY the raw JSON object, with no explanations or markdown formatting.
+
+    - name: output_format
+      template: |
+        ## Required JSON Output Format:
+        ```json
+        {json_schema_example}
+        ```
+
+# A separate block for structured data that gets injected into the templates.
+# This keeps the prompt's content separate from its structural flow.
+injected_data:
+  json_schema_example: |
+    {
+      "select_fields": ["*"],
+      "from_targets": ["nodes"],
+      "where_conditions": [
+        {
+          "OR": [
+            { "field": "field_name_1", "operator": "=", "value": "some_value" },
+            { "field": "field_name_2", "operator": "CONTAINS", "value": "some_value" }
+          ]
+        },
+        {
+          "AND": [
+            { "field": "field_name_3", "operator": ">", "value": 100 },
+            { "field": "field_name_4", "operator": "!=", "value": "other_value" }
+          ]
+        }
+      ],
+      "order_by": ["field_name ASC/DESC"],
+      "limit": 100
+    }

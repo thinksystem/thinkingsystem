@@ -1,0 +1,92 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "stele"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[features]
+default = []
+evalexpr = ["dep:evalexpr"]
+
+[dependencies]
+# Workspace crates
+estel = { path = "../estel" }
+llm-contracts = { path = "../llm-contracts" }
+steel = { path = "../steel" }
+
+# Core system dependencies
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+serde_yml.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+time.workspace = true
+
+# WebAssembly and JIT compilation
+wasmtime.workspace = true
+wat.workspace = true
+
+# File system monitoring
+notify.workspace = true
+
+# Async runtime
+async-trait.workspace = true
+futures.workspace = true
+futures-core.workspace = true
+
+# Networking and HTTP
+reqwest.workspace = true
+axum.workspace = true
+tonic.workspace = true
+prost.workspace = true
+
+# Database
+surrealdb.workspace = true
+neo4rs.workspace = true
+
+# Data structures and algorithms
+petgraph.workspace = true
+bson.workspace = true
+lru = "0.16"
+
+# Text processing
+regex.workspace = true
+lazy_static.workspace = true
+rust_decimal.workspace = true
+
+# Performance
+rayon.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+
+# Mathematical functions
+libm = "0.2"
+
+# Messaging
+paho-mqtt.workspace = true
+
+# Configuration and data formats
+toml.workspace = true
+dotenvy.workspace = true
+url.workspace = true
+rdkafka.workspace = true
+pin-project-lite.workspace = true
+tokio-stream.workspace = true
+parking_lot = "0.12.4"
+flate2 = "1.1.2"
+bincode = { version = "2.0.1", features = ["serde"] }
+
+# Optional dependencies
+evalexpr = { workspace = true, optional = true }
+
+# Build dependencies
+[build-dependencies]
+tonic-build.workspace = true

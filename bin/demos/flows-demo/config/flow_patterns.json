@@ -1,0 +1,55 @@
+[
+  {
+    "name": "Simple Greeting Flow",
+    "description": "A basic flow that displays a greeting message.",
+    "use_case": "Simple user interaction, initial messages.",
+    "flow_definition": {
+      "id": "greeting_flow",
+      "name": "Greeting Flow",
+      "start_block_id": "display_greeting",
+      "blocks": [
+        {
+          "id": "display_greeting",
+          "block_type": "Display",
+          "properties": {
+            "message": "Hello, welcome!",
+            "next_block": "end_compute"
+          }
+        },
+        {
+          "id": "end_compute",
+          "block_type": "Compute",
+          "properties": {
+            "expression": "\"Flow completed.\""
+          }
+        }
+      ]
+    },
+    "complexity": "Simple",
+    "notes": "Demonstrates a Display block followed by a Compute block for termination.  The Compute block has no `next_block`, which ends the flow."
+  },
+  {
+    "name": "Input and Display Flow",
+    "description": "Gets user input and displays it back.",
+    "use_case": "Collecting and displaying basic information.",
+    "flow_definition": {},
+    "template_path": "",
+    "complexity": "Simple",
+    "notes": "Shows basic input and output.  Useful for simple interactions."
+  },
+  {
+    "name": "Input-Driven Flow",
+    "description": "Starts with user input and processes through external data",
+    "use_case": "Data collection, appointment scheduling, form processing",
+    "template_path": "crates/stele/src/blocks/templates/sample_flow.json",
+    "complexity": "Moderate"
+  },
+  {
+    "name": "Processing Logic Flow",
+    "description": "Input -> OAuth -> Schedule -> Availability Check -> Compute",
+    "use_case": "Complex business logic, multi-step processing",
+    "template_path": "crates/stele/src/blocks/templates/scheduling_logic.json",
+    "complexity": "Complex",
+    "notes": "Example of integrating multiple services.  Requires external OAuth and scheduling components."
+  }
+]

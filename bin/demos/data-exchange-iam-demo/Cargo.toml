@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "data-exchange-iam-demo"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "data-exchange-iam-demo"
+path = "src/main.rs"
+
+[dependencies]
+# Internal crates
+steel = { path = "../../../crates/steel" }
+
+# External dependencies (using workspace deps where possible)
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+async-trait.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+anyhow.workspace = true

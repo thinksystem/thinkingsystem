@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+cognitive_patterns:
+  - pattern_id: "cause_effect_analysis"
+    description: "Identifying causal relationships between events"
+    triggers:
+      - "because"
+      - "therefore"
+      - "as a result"
+      - "leads to"
+    structure:
+      - identify_cause
+      - examine_mechanism
+      - verify_effect
+      - consider_alternatives
+
+  - pattern_id: "analogical_reasoning"
+    description: "Drawing insights from similar situations"
+    triggers:
+      - "similar to"
+      - "like"
+      - "reminds me of"
+      - "analogous to"
+    structure:
+      - identify_source_domain
+      - map_relationships
+      - transfer_insights
+      - validate_analogy
+
+  - pattern_id: "deductive_reasoning"
+    description: "Logical inference from general principles"
+    triggers:
+      - "if...then"
+      - "given that"
+      - "it follows"
+      - "necessarily"
+    structure:
+      - state_premises
+      - apply_rules
+      - derive_conclusion
+      - check_validity
+
+  - pattern_id: "inductive_reasoning"
+    description: "Generalising from specific observations"
+    triggers:
+      - "pattern suggests"
+      - "evidence indicates"
+      - "trend shows"
+      - "likely that"
+    structure:
+      - collect_observations
+      - identify_patterns
+      - form_hypothesis
+      - test_generalisation

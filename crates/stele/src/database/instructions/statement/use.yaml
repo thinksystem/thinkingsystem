@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: use
+spec:
+  syntax: "USE [ NS @ns ] [ DB @db ];"
+  summary: "Specifies the namespace and/or database for subsequent statements in the current connection."
+  variants:
+    - name: Default
+      summary: "Switches the active namespace, database, or both for the current connection."
+      syntax: "USE [ NS @ns ] [ DB @db ];"
+      examples:
+        - query: "USE NS test;"
+        - query: "USE DB test;"
+        - query: "USE NS test DB test;"

@@ -1,0 +1,107 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+id: vm_demo_orchestrated_flow
+start_block_id: INIT
+participants:
+  - planner
+  - reviewer
+  - arbiter
+permissions:
+  print:
+    - execute
+initial_state:
+  goal: Demonstrate hybrid VM + orchestration
+  iteration: 0
+  max_iterations: 3
+  plan: null
+  review: null
+  quality_score: 0
+  status: planning
+  tasks: [t1, t2, t3, t4]
+  processed_count: 0
+state_schema: null
+blocks:
+  - id: INIT
+    block_type: !Compute
+      expression: "1"
+      output_key: iteration
+      next_block: SEED_TASKS
+  - id: SEED_TASKS
+    block_type: !Compute
+      expression: "0"
+      output_key: processed_count
+      next_block: TASK_LOOP
+  - id: TASK_LOOP
+    block_type: !ForEach
+      loop_id: loop1
+      array_path: tasks
+      iterator_var: task
+      loop_body_block_id: PROCESS_TASK
+      exit_block_id: AFTER_TASKS
+  - id: PROCESS_TASK
+    block_type: !Compute
+      expression: processed_count + 1
+      output_key: processed_count
+      next_block: BREAK_CHECK
+  - id: BREAK_CHECK
+    block_type: !Conditional
+      condition: processed_count >= 2
+      true_block: BREAK_LOOP
+      false_block: CONTINUE_LOOP
+  - id: BREAK_LOOP
+    block_type: !Break
+      loop_id: loop1
+  - id: CONTINUE_LOOP
+    block_type: !Continue
+      loop_id: loop1
+  - id: AFTER_TASKS
+    block_type: !Compute
+      expression: "0"
+      output_key: quality_score
+      next_block: PLAN
+  - id: PLAN
+    block_type: !AwaitInput
+      interaction_id: generate_plan
+      agent_id: planner
+      prompt: Generate a concise plan for the goal
+      state_key: plan
+      next_block: REVIEW
+  - id: REVIEW
+    block_type: !AwaitInput
+      interaction_id: review_plan
+      agent_id: reviewer
+      prompt: Review the proposed plan. Provide actionable feedback.
+      state_key: review
+      next_block: ASSESS
+  - id: ASSESS
+    block_type: !Compute
+      expression: "7"
+      output_key: quality_score
+      next_block: CHECK_QUALITY
+  - id: CHECK_QUALITY
+    block_type: !Conditional
+      condition: quality_score >= 7
+      true_block: SUCCESS
+      false_block: CHECK_ITERATION_LIMIT
+  - id: CHECK_ITERATION_LIMIT
+    block_type: !Conditional
+      condition: iteration < max_iterations
+      true_block: INCREMENT_ITERATION
+      false_block: FAIL
+  - id: INCREMENT_ITERATION
+    block_type: !Compute
+      expression: iteration + 1
+      output_key: iteration
+      next_block: PLAN
+  - id: SUCCESS
+    block_type: !Compute
+      expression: '"accepted"'
+      output_key: status
+      next_block: TERMINATE
+  - id: FAIL
+    block_type: !Compute
+      expression: '"failed"'
+      output_key: status
+      next_block: TERMINATE
+  - id: TERMINATE
+    block_type: !Terminate

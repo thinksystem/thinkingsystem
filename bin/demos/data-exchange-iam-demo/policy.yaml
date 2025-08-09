@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+providers:
+  - name: store_data_exchange
+    connection_type: rest
+    config:
+      base_url: "http://localhost:8080"
+      topic: "fusion_retail/store_events"
+
+  - name: logistics_api
+    connection_type: rest
+    config:
+      base_url: "http://localhost:8081"
+      topic: "fusion_retail/logistics"
+
+  - name: analytics_service
+    connection_type: rest
+    config:
+      base_url: "http://localhost:8082"
+
+policies:
+  - name: allow_store_manager_data
+    role: "StoreManager"
+    action: "publish"
+    resource: "store_data_exchange"
+    effect: "allow"
+    conditions:
+      - "data.classification in ['SalesData', 'InventoryData']"
+
+  - name: allow_logistics_commands
+    role: "LogisticsCoordinator"
+    action: "publish"
+    resource: "logistics_api"
+    effect: "allow"
+    conditions:
+      - "data.classification == 'InventoryCommand'"
+
+  - name: block_pii_analytics
+    role: "any"
+    action: "publish"
+    resource: "analytics_service"
+    effect: "deny"
+    conditions:
+      - "data.contains('customer_pii')"
+
+  - name: allow_analyst_queries
+    role: "RegionalAnalyst"
+    action: "publish"
+    resource: "analytics_service"
+    effect: "allow"
+    conditions:
+      - "data.classification == 'AnalyticsQuery'"

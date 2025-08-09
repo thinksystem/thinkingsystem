@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: if else
+spec:
+  syntax: |
+    -- Modern Syntax
+    IF @condition { @expression; .. }
+      [ ELSE IF @condition { @expression; .. } ] ...
+      [ ELSE { @expression; .. } ]
+
+    -- Legacy Syntax
+    IF @condition THEN @expression | { @expression; .. }
+      [ ELSE IF @condition THEN @expression | { @expression; .. } ] ...
+      [ ELSE @expression | { @expression; .. } ]
+    END;
+  summary: "Conditionally executes expressions or returns values based on one or more conditions."
+  variants:
+    - name: Default
+      summary: "The standard usage of the IF ELSE statement to conditionally execute code or return values using modern syntax."
+      syntax: |
+        IF @condition { @expression; .. }
+          [ ELSE IF @condition { @expression; .. } ] ...
+          [ ELSE { @expression; .. } ]
+      examples:
+        - query: |
+            LET $num = 100;
+            RETURN IF $num < 0 {
+                "Negative"
+            } ELSE IF $num = 0 {
+                "Zero"
+            } ELSE IF $num = 13 {
+                "Thirteen"
+            } ELSE {
+                "Positive uninteresting number"
+            };
+        - query: |
+            LET $badly_formatted_datetime = "2024-04TT08:08:08Z";
+            IF !type::is::datetime($badly_formatted_datetime) {
+                THROW "Whoops, that isn't a real datetime";
+            };
+        - query: |
+            LET $num = 9;
+            LET $odd_even = IF $num % 2 = 0 {
+                "even"
+            } ELSE {
+                "odd"
+            };
+            RETURN $odd_even;
+        - setup:
+            - "CREATE person:1 SET age = 19;"
+          query: |
+            UPDATE person:1 SET railcard = (
+                IF age <= 10 { 'junior' }
+                ELSE IF age <= 21 { 'student' }
+                ELSE IF age >= 65 { 'senior' }
+                ELSE { NULL }
+            );
+        - setup:
+            - "LET $access = 'admin';"
+          query: |
+            IF $access = 'admin' {
+                CREATE admin_user_event SET
+                     time = time::now(),
+                    info = "Admin user activity registered";
+                SELECT * FROM admin_data WHERE access_level = 'full';
+            } ELSE {
+                THROW "Access denied";
+            }

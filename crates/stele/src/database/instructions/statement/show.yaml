@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: show
+spec:
+  syntax: "SHOW CHANGES FOR TABLE @tablename SINCE @timestamp | @versionstamp [ LIMIT @number ]"
+  summary: "Replays a stream of changes that have occurred on a specific table."
+  variants:
+    - name: "Default"
+      summary: "Replays changes for a table from a specified point in time or version, with an optional limit."
+      syntax: "SHOW CHANGES FOR TABLE @tablename SINCE @timestamp | @versionstamp [ LIMIT @number ]"
+      examples:
+        # The following datetime-based examples have been removed as they are not
+        # compatible with the current SQL parser library.
+        # - query: "SHOW CHANGES FOR TABLE reading SINCE `2023-09-07T01:23:52Z` LIMIT 10;"
+        # - query: "SHOW CHANGES FOR TABLE reading SINCE `2023-09-07T01:23:52Z`;"        
+        - setup:
+            - "DEFINE TABLE reading CHANGEFEED 3d;"
+            - "CREATE reading SET story = 'Once upon a time';"
+          query: "SHOW CHANGES FOR TABLE reading SINCE 1;"
+        - query: "SHOW CHANGES FOR TABLE reading SINCE 1 LIMIT 10;"

@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: info
+spec:
+  syntax: "INFO FOR [ ROOT | NS | NAMESPACE | DB | DATABASE | TABLE @table | USER @user [ON @level] | INDEX @index ON @table ] [ STRUCTURE ];"
+  summary: "Outputs configuration information about the SurrealDB system at various levels."
+  variants:
+    - name: "Root-level Information"
+      summary: "Returns information about all namespaces and root-level users, along with system metrics. Requires root authentication."
+      syntax: "INFO FOR ROOT;"
+      examples:
+        - query: "INFO FOR ROOT;"
+    - name: "Namespace-level Information"
+      summary: "Returns information about all databases, access methods, and users within the current namespace. Requires root or namespace authentication."
+      syntax: "INFO FOR NS | NAMESPACE;"
+      examples:
+        - query: "INFO FOR NS;"
+    - name: "Database-level Information"
+      summary: "Returns information about all tables, scopes, functions, and users within the current database. Requires root, namespace, or database authentication."
+      syntax: "INFO FOR DB | DATABASE;"
+      examples:
+        - query: "INFO FOR DB;"
+    - name: "Table-level Information"
+      summary: "Returns information about the fields, indexes, events, and other configurations for a specific table."
+      syntax: "INFO FOR TABLE @table;"
+      examples:
+        - query: "INFO FOR TABLE user;"
+    - name: "User Information"
+      summary: "Returns the definition for a specific user at the specified scope (ROOT, NAMESPACE, or DATABASE). If no scope is provided, it defaults to the current database."
+      syntax: "INFO FOR USER @user [ ON [ ROOT | NAMESPACE | DATABASE ] ];"
+      examples:
+        - query: |
+            INFO FOR USER root ON ROOT;
+            INFO FOR USER ns_user ON NAMESPACE;
+            INFO FOR USER db_user ON DATABASE;
+            INFO FOR USER db_user;
+    - name: "Index Information"
+      summary: "Returns the build status of an index that was defined with the `CONCURRENTLY` clause. This allows you to monitor the progress of background indexing."
+      syntax: "INFO FOR INDEX @index ON @table;"
+      examples:
+        - setup:
+            - "CREATE |user:50000| SET name = id.id() RETURN NONE;"
+            - "DEFINE INDEX unique_name ON TABLE user FIELDS name UNIQUE CONCURRENTLY;"
+          query: "INFO FOR INDEX unique_name ON user;"
+  features:
+    - name: "The STRUCTURE clause"
+      examples:
+        - query: "INFO FOR TABLE user;"
+        - query: "INFO FOR TABLE user STRUCTURE;"
+    - name: "Using the output of INFO"
+      available_since: "v3.0.0-alpha.2"
+      examples:
+        - query: |
+            LET $first_schema = {
+                revision: rand::uuid(),
+                schema: INFO FOR DB
+            };
+        - query: "CREATE person;"
+        - query: |
+            LET $second_schema = {
+                revision: rand::uuid(),
+                schema: INFO FOR DB
+            };
+            RETURN $first_schema.diff($second_schema);

@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Messaging Security Configuration
+# This file contains all configurable parameters for the PII detection system
+
+[scoring]
+# Token scoring bonuses
+length_bonus_8 = 0.1
+length_bonus_16 = 0.1
+all_digits_bonus = 0.4
+all_digits_len_bonus_10 = 0.2
+alphanumeric_bonus = 0.2
+mixed_case_bonus = 0.1
+at_symbol_bonus = 0.6
+hyphen_bonus = 0.2
+slash_bonus = 0.2
+uuid_like_bonus = 0.4
+api_key_like_bonus = 0.3
+
+[thresholds]
+# Percentile threshold for scribes review (0.0-1.0, e.g., 0.85 = top 15% get reviewed)
+scribes_review_percentile = 0.85
+# Minimum score threshold - scores above this always get reviewed, regardless of percentile
+absolute_threshold_override = 0.75
+# Minimum number of scores required before using percentile-based thresholding
+min_history_for_percentile = 20
+
+[distribution]
+# Maximum number of scores to keep in history
+max_history_size = 1000
+
+[paths]
+# State directory relative to steel crate root (where tests run from)
+state_dir = "src/messaging/state"
+# State file name
+state_file = "score_distribution.yml"

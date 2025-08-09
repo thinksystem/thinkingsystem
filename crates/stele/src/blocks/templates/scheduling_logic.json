@@ -1,0 +1,60 @@
+{
+  "processing_logic": {
+    "name": "Processing Logic Flow",
+    "start_block_id": "match_input",
+    "blocks": [
+      {
+        "id": "match_input",
+        "type": "Input",
+        "properties": {
+          "prompt": "Please provide your appointment details",
+          "description": "Matches the user input with the available appointment slots."
+        }
+      },
+      {
+        "id": "oauth_provider",
+        "type": "ExternalData",
+        "properties": {
+          "api_url": "https://oauth.example.com/token",
+          "data_path": "$.access_token",
+          "description": "Handles OAuth authentication and token management.",
+          "next_block": "schedule_appointment"
+        }
+      },
+    {
+      "id": "schedule_appointment",
+      "type": "ExternalData",
+      "properties": {
+        "api_url": "https://calendar.example.com/appointments",
+        "data_path": "$.appointment",
+        "description": "Schedules an appointment based on the selected slot and user preferences.",
+        "next_block": "check_availability"
+      }
+    },
+    {
+      "id": "check_availability",
+      "type": "Conditional",
+      "properties": {
+        "condition": "availability_check(calendar_id, start_time, end_time)",
+        "true_block": "compute_slots",
+        "false_block": "match_input"
+      }
+    },
+    {
+      "id": "compute_slots",
+      "type": "Compute",
+      "properties": {
+        "expression": "compute_appointment_slots(anchor_date, from_date, to_date, start_time, end_time, duration)",
+        "next_block": "process_complete"
+      }
+    },
+    {
+      "id": "process_complete",
+      "type": "Compute",
+      "properties": {
+        "expression": "\"Processing logic completed successfully.\""
+      }
+    }
+  ]
+  }
+}

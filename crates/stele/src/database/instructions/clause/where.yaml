@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: where
+spec:
+  syntax: "@query WHERE <condition>"
+  summary: "Filters records or specifies conditions for operations and definitions."
+  variants:
+    - name: "Conditional Record Selection"
+      summary: "Filters the result of a SELECT statement based on a condition."
+      setup:
+        - "CREATE person:1 SET name = 'Alice', age = 25, city = 'New York';"
+        - "CREATE person:2 SET name = 'Bob', age = 35, city = 'London';"
+        - "CREATE person:3 SET name = 'Charlie', age = 45, city = 'New York';"
+      queries:
+        - query: "SELECT * FROM person WHERE city = 'New York';"
+    - name: "Conditional Record Alteration"
+      summary: "Specifies which records to operate on in an UPDATE or DELETE statement."
+      setup:
+        - "CREATE product:1 SET name = 'Laptop', status = 'active';"
+        - "CREATE product:2 SET name = 'Mouse', status = 'inactive';"
+      queries:
+        - query: "UPDATE product SET status = 'discontinued' WHERE status = 'active';"
+    - name: "Setting Conditions in DEFINE FUNCTION"
+      summary: "Filters data within the logic of a function as part of its operation."
+      queries:
+        - query: |
+            DEFINE FUNCTION fn::relation_exists(
+            	$in: record,
+            	$tb: string,
+            	$out: record
+            ) {
+            	LET $results = SELECT VALUE id FROM type::table($tb) WHERE in = $in AND out = $out;
+            	RETURN array::len($results) > 0;
+            };
+    - name: "Setting Permissions in DEFINE TABLE"
+      summary: "Specifies conditions for table permissions, applying CRUD rules based on the evaluation of the WHERE clause."
+      queries:
+        - query: |
+            DEFINE TABLE post SCHEMALESS
+            	PERMISSIONS
+            		FOR select
+            			WHERE published = true
+            			OR user = $auth.id
+            		FOR create, update
+            			WHERE user = $auth.id
+            		FOR delete
+            			WHERE user = $auth.id
+            			OR $auth.admin = true;
+        - query: |
+            DEFINE TABLE assigned_to SCHEMAFULL TYPE RELATION IN tag OUT sticky
+                PERMISSIONS
+                    FOR create, select, update, delete
+                        WHERE in.owner == $auth.id AND out.author == $auth.id;

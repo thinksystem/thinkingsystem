@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Defines common graph patterns that can be used for complex queries, validation,
+# or inferring new relationships. The current implementation uses this file as a
+# placeholder, but the structure is here for future expansion.
+#
+# Each pattern will eventually have a name, a description, and a query template.
+
+patterns:
+  # Example Pattern 1: Source Traceability
+  # This pattern helps find the origin of a piece of information.
+  # It traces a knowledge node back to the original utterance or document.
+  - {}
+    # name: "source_traceability"
+    # description: "Finds the original source utterance for a given knowledge node."
+    # query_template: "SELECT ->DERIVED_FROM->utterance.* FROM nodes WHERE id = $node_id"
+
+  # Example Pattern 2: Hierarchical Classification
+  # This pattern is for traversing 'IS_A' or 'PART_OF' style relationships.
+  # Useful for answering questions like "What are the types of systems?"
+  - {}
+    # name: "hierarchical_classification"
+    # description: "Traverses up a hierarchy of concepts."
+    # query_template: "SELECT ->IS_A+ FROM concepts WHERE name = $concept_name"
+
+  # Example Pattern 3: Causal Chain
+  # For finding sequences of events linked by causal relationships.
+  - {}
+    # name: "causal_chain"
+    # description: "Finds a chain of events linked by 'CAUSES' or 'LEADS_TO' relationships."
+    # query_template: "SELECT ->CAUSES+ FROM events WHERE id = $event_id"

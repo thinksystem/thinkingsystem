@@ -1,0 +1,23 @@
+Analyse the following text and provide a structured analysis in JSON format:
+
+Text: "{text}"
+
+Please provide your analysis in the following JSON structure:
+{{
+    "summary": "Brief summary of the content",
+    "key_entities": ["list", "of", "key", "entities"],
+    "topics": ["main", "topics", "identified"],
+    "sentiment": "positive/negative/neutral",
+    "complexity_score": 0.0,
+    "keywords": ["extracted", "keywords"],
+    "potential_relationships": [
+        {{"entity1": "A", "entity2": "B", "relationship": "relates to", "confidence": 0.8}}
+    ],
+    "metadata": {{
+        "language": "detected_language",
+        "domain": "identified_domain",
+        "urgency_assessment": 0.0
+    }}
+}}
+
+Respond only with valid JSON.

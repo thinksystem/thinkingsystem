@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: explain
+spec:
+  syntax: "@query EXPLAIN [FULL]"
+  summary: "Explains the query plan, revealing the execution steps for transparency and performance analysis."
+  variants:
+    - name: "Index Not Used"
+      summary: "Demonstrates the execution plan when querying a field that is not indexed, resulting in a full table scan."
+      setup:
+        - "CREATE person:tobie SET name = \"Tobie\", address = \"1 Bagshot Row\", email = \"tobie@surrealdb.com\";"
+      queries:
+        - query: "SELECT * FROM person WHERE email='tobie@surrealdb.com' EXPLAIN;"
+        - query: "SELECT * FROM person WHERE email='tobie@surrealdb.com' EXPLAIN FULL;"
+    - name: "Index Used"
+      summary: "Demonstrates the execution plan when querying a field that has an index, resulting in a more efficient index scan."
+      setup:
+        - "DEFINE INDEX fast_email ON TABLE person FIELDS email;"
+        - "CREATE person:tobie SET name = \"Tobie\", address = \"1 Bagshot Row\", email = \"tobie@surrealdb.com\";"
+      queries:
+        - query: "SELECT * FROM person WHERE email='tobie@surrealdb.com' EXPLAIN;"
+        - query: "SELECT * FROM person WHERE email='tobie@surrealdb.com' EXPLAIN FULL;"

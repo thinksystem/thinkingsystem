@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "llm-contracts"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# Minimal dependencies - only serialization
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_yaml.workspace = true
+
+# For structured data types
+uuid = { workspace = true, features = ["v4", "serde"] }
+chrono = { workspace = true, features = ["serde"] }
+
+# Error handling
+thiserror.workspace = true
+
+# Async trait support
+async-trait.workspace = true

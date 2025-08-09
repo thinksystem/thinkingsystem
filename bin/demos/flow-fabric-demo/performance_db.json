@@ -1,0 +1,16 @@
+{
+  "data": {
+    "claude-sonnet-4-20250514": {
+      "avg_response_ms": 4053.9722160419997,
+      "avg_tokens_per_second": 47.7460682151551,
+      "success_count": 9,
+      "failure_count": 0,
+      "failure_rate": 0.0,
+      "cost_estimation_multiplier": 1.0,
+      "active_requests": 0,
+      "circuit_breaker_state": "Closed",
+      "last_failure_time": null,
+      "consecutive_failures": 0
+    }
+  }
+}

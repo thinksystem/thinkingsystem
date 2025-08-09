@@ -1,0 +1,60 @@
+# OS
+.DS_Store
+
+# Editors/IDE
+.vscode/
+.idea/
+
+/# Repo meta and backlog (do not track)
+/github/workflows/
+/backlog/
+
+# Env/config
+.env
+.env.*
+.envrc
+.direnv/
+.venv/
+venv/
+
+# Logs
+logs/
+**/logs/
+*.log
+
+# Rust/Cargo
+# Workspace build output
+target/
+# Nested targets under subprojects/demos
+**/target/
+# Dynamic libraries
+*.so
+*.dylib
+*.dll
+# Keep root Cargo.lock tracked; ignore nested ones used by native components
+bin/gtr-fabric/native/**/Cargo.lock
+
+# Elixir (gtr-fabric)
+bin/gtr-fabric/_build/
+bin/gtr-fabric/deps/
+bin/gtr-fabric/mix.lock
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+
+# Data/models
+/models/
+
+# Crash dumps and dump folders
+dump/
+**/dump/
+*.dump
+/orchestration/sessions/
+
+# Data exports
+*.jsonl
+*.pyc

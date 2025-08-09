@@ -1,0 +1,67 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: remove
+spec:
+  syntax: |
+    REMOVE
+    	NAMESPACE [ IF EXISTS ] @name
+    	| DATABASE [ IF EXISTS ] @name
+    	| USER [ IF EXISTS ] @name ON [ ROOT | NAMESPACE | DATABASE ]
+    	| ACCESS [ IF EXISTS ] @name ON [ NAMESPACE | DATABASE ]
+    	| EVENT [ IF EXISTS ] @name ON [ TABLE ] @table
+    	| FIELD [ IF EXISTS ] @name ON [ TABLE ] @table
+    	| INDEX [ IF EXISTS ] @name ON [ TABLE ] @table
+    	| ANALYZER [ IF EXISTS ] @name
+    	| FUNCTION [ IF EXISTS ] fn::@name
+    	| PARAM [ IF EXISTS ] $@name
+    	| TABLE [ IF EXISTS ] @name
+    ;
+  summary: "The REMOVE statement is used to delete various database resources."
+  variants:
+    - name: "Remove Namespace"
+      summary: "Removes a namespace."
+      syntax: "REMOVE NAMESPACE [ IF EXISTS ] @name;"
+      examples:
+        - setup:
+            - "DEFINE NAMESPACE my_namespace;"
+          query: "REMOVE NAMESPACE my_namespace;"
+    - name: "Remove Database"
+      summary: "Removes a database."
+      syntax: "REMOVE DATABASE [ IF EXISTS ] @name;"
+      examples:
+        - setup:
+            - "DEFINE DATABASE my_database;"
+          query: "REMOVE DATABASE my_database;"
+    - name: "Remove User"
+      summary: "Removes a user at a specific scope (ROOT, NAMESPACE, or DATABASE)."
+      syntax: "REMOVE USER [ IF EXISTS ] @name ON [ ROOT | NAMESPACE | DATABASE ];"
+      examples:
+        - setup:
+            - "DEFINE USER blog_author ON DATABASE PASSWORD 'password' ROLES GUEST;"
+          query: "REMOVE USER blog_author ON DATABASE;"
+    - name: "Remove Field"
+      summary: "Removes a field definition from a schemaful table's schema."
+      syntax: "REMOVE FIELD [ IF EXISTS ] @name ON [ TABLE ] @table;"
+      examples:
+        - setup:
+            - "DEFINE TABLE article SCHEMAFULL; DEFINE FIELD tags ON TABLE article TYPE list<string>;"
+          query: "REMOVE FIELD tags ON TABLE article;"
+    - name: "Remove Index"
+      summary: "Removes an index from a table."
+      syntax: "REMOVE INDEX [ IF EXISTS ] @name ON [ TABLE ] @table;"
+      examples:
+        - setup:
+            - "DEFINE TABLE user; DEFINE INDEX unique_email ON TABLE user COLUMNS email UNIQUE;"
+          query: "REMOVE INDEX unique_email ON TABLE user;"
+        - setup:
+            - "DEFINE TABLE user;"
+          query: "REMOVE INDEX IF EXISTS user_email_idx ON TABLE user;"
+    - name: "Remove Table"
+      summary: "Removes a table and all of its records."
+      syntax: "REMOVE TABLE [ IF EXISTS ] @name;"
+      examples:
+        - setup:
+            - "DEFINE TABLE products;"
+          query: "REMOVE TABLE products;"
+        - query: "REMOVE TABLE IF EXISTS logs;"

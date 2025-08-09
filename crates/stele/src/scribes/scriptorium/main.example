@@ -1,0 +1,81 @@
+// src/main.rs
+
+use scribe_library::scribes::{DataScribe, IdentityScribe, KnowledgeScribe, Scribe};
+use scribe_library::scriptorium::canons::CanonOfIngestionAndVerification;
+use scribe_library::scriptorium::Scriptorium;
+use serde_json::json;
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() {
+    let scriptorium = Arc::new(Scriptorium::new());
+
+    // --- Register our specialised Scribes ---
+    let data_scribe = Scribe::Data(DataScribe::new("data_scribe_1"));
+    let knowledge_scribe = Scribe::Knowledge(KnowledgeScribe::new("knowledge_scribe_1"));
+    let identity_scribe = Scribe::Identity(IdentityScribe::new("identity_scribe_1"));
+
+    let data_scribe_id = data_scribe.id();
+    let knowledge_scribe_id = knowledge_scribe.id();
+    let identity_scribe_id = identity_scribe.id();
+
+    scriptorium.register_scribe(data_scribe).await;
+    scriptorium.register_scribe(knowledge_scribe).await;
+    scriptorium.register_scribe(identity_scribe).await;
+
+    println!("--- Scriptorium Initialised with 3 Scribes ---\n");
+
+    // --- Run the workflow 5 times to see evolution ---
+    for i in 0..5 {
+        println!("==================================================");
+        println!("=== Initiating Discourse #{} ===", i + 1);
+        println!("==================================================");
+
+        // Define the task for this Discourse
+        let raw_text = format!("The STELE cognitive core reported unusual activity in run #{}", 7+i);
+        let data_source = "urn:stele:log:1138";
+        
+        // Instantiate the Canon for this task
+        let canon = Box::new(CanonOfIngestionAndVerification::new(
+            raw_text.clone(),
+            data_source.to_string(),
+            data_scribe_id.clone(),
+            knowledge_scribe_id.clone(),
+            identity_scribe_id.clone(),
+        ));
+        
+        let initial_data = json!({
+            "raw_text": raw_text,
+            "data_source": data_source,
+        });
+
+        // The Scriptorium presides over the Discourse
+        let testament = scriptorium.initiate_discourse(canon, initial_data).await;
+
+        println!("\n--- Testament Sealed ---");
+        println!("Canon Invoked: {}", testament.canon_invoked);
+        println!("Overall Success: {}", testament.was_successful);
+        println!("Final Product:\n{:#}\n", testament.final_product);
+
+        println!("--- Chronicle of Inscriptions ---");
+        for (idx, inscription) in testament.chronicle.iter().enumerate() {
+            println!(
+                "  {}. Scribe: {}, Action: {}, Success: {}",
+                idx + 1,
+                inscription.scribe_id,
+                inscription.action,
+                inscription.result.is_ok()
+            );
+        }
+
+        println!("\n--- Evolved Scribe Strategies ---");
+        let state1 = scriptorium.get_scribe_state(&data_scribe_id).await.unwrap();
+        let state2 = scriptorium.get_scribe_state(&knowledge_scribe_id).await.unwrap();
+        let state3 = scriptorium.get_scribe_state(&identity_scribe_id).await.unwrap();
+        
+        println!("Data Scribe:      Agg: {:.2}, Coop: {:.2}", state1.strategy.aggressiveness, state1.strategy.cooperativeness);
+        println!("Knowledge Scribe: Agg: {:.2}, Coop: {:.2}", state2.strategy.aggressiveness, state2.strategy.cooperativeness);
+        println!("Identity Scribe:  Agg: {:.2}, Coop: {:.2}", state3.strategy.aggressiveness, state3.strategy.cooperativeness);
+        println!("\n");
+    }
+}

@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: with
+spec:
+  syntax: "@query WITH [ NOINDEX | INDEX @indexes ... ]"
+  summary: "Provides manual control over the query planner's choice of iterators, allowing the user to force the use of a specific index or no index at all."
+  variants:
+    - name: "WITH NOINDEX"
+      summary: "Forces the query planner to use the default table iterator (a full table scan) and ignore any potentially applicable indexes."
+      setup:
+        - "DEFINE INDEX person_job ON TABLE person FIELDS job;"
+        - "CREATE person:john SET name = 'John', job = 'engineer', gender = 'm';"
+      queries:
+        - query: "SELECT name FROM person WITH NOINDEX WHERE job = 'engineer' AND gender = 'm';"
+    - name: "WITH INDEX @indexes"
+      summary: "Restricts the query planner to use only the specified index or list of indexes."
+      setup:
+        - "DEFINE INDEX ft_email ON TABLE person FIELDS email;"
+        - "CREATE person:tobie SET email = 'tobie@surrealdb.com', company = 'SurrealDB';"
+      queries:
+        - query: |
+            SELECT * FROM person
+            WITH INDEX ft_email
+            WHERE
+              email = 'tobie@surrealdb.com' AND
+              company = 'SurrealDB';

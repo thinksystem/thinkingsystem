@@ -1,0 +1,580 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "STELE Scribes Demo Test Scenarios",
+  "description": "Comprehensive test scenarios for the STELE cognitive system demo",
+  "version": "1.0.0",
+  "metadata": {
+    "created": "2025-07-27",
+    "purpose": "Consolidated test data for scribes-demo validation and stress testing",
+    "categories": [
+      "knowledge_specialist",
+      "data_processor", 
+      "identity_verifier",
+      "coordination",
+      "stress_testing",
+      "edge_cases",
+      "failure_recovery"
+    ]
+  },
+  "scenarios": {
+    "knowledge_specialist": [
+      {
+        "id": "ks-001",
+        "name": "Basic Entity Relationship",
+        "description": "Simple entity relationship linking",
+        "category": "knowledge_specialist",
+        "priority": "normal",
+        "data": {
+          "entities": ["A", "B"],
+          "content": "A relates to B"
+        },
+        "expected_outcome": {
+          "success": true,
+          "entities_processed": 2,
+          "relationships_created": 1
+        }
+      },
+      {
+        "id": "ks-002", 
+        "name": "Secondary Entity Relationship",
+        "description": "Alternative entity relationship linking",
+        "category": "knowledge_specialist",
+        "priority": "normal",
+        "data": {
+          "entities": ["C", "D"],
+          "content": "C relates to D"
+        },
+        "expected_outcome": {
+          "success": true,
+          "entities_processed": 2,
+          "relationships_created": 1
+        }
+      },
+      {
+        "id": "ks-003",
+        "name": "Multi-Agent Knowledge Graph",
+        "description": "Complex entity relationships for multi-agent systems",
+        "category": "knowledge_specialist",
+        "priority": "high",
+        "data": {
+          "entities": ["cognitive_architectures", "multi_agent_systems", "emergent_intelligence", "distributed_decision_making"],
+          "content": "Advanced cognitive architectures enable multi-agent systems to exhibit emergent intelligence through coordinated interaction patterns and distributed decision-making processes."
+        },
+        "expected_outcome": {
+          "success": true,
+          "entities_processed": 4,
+          "relationships_created": 6
+        }
+      }
+    ],
+    
+    "data_processor": [
+      {
+        "id": "dp-001",
+        "name": "Multi-Agent Cognitive System Analysis",
+        "description": "Complex technical text processing with high urgency",
+        "category": "data_processor",
+        "priority": "high",
+        "data": {
+          "text": "The multi-agent cognitive system demonstrates emergent behaviours through coordinated decision-making processes involving distributed neural networks and reinforcement learning algorithms.",
+          "urgency": 0.8
+        },
+        "expected_outcome": {
+          "success": true,
+          "method": "llm_structured_analysis",
+          "entities_extracted": ["multi_agent", "cognitive_system", "neural_networks", "reinforcement_learning"],
+          "min_processing_time_ms": 500
+        }
+      },
+      {
+        "id": "dp-002",
+        "name": "NLP Processing Analysis",
+        "description": "Natural language processing capabilities assessment",
+        "category": "data_processor", 
+        "priority": "medium",
+        "data": {
+          "text": "Advanced natural language processing capabilities enable sophisticated understanding of complex technical documentation and research papers.",
+          "urgency": 0.6
+        },
+        "expected_outcome": {
+          "success": true,
+          "method": "llm_structured_analysis",
+          "entities_extracted": ["natural_language_processing", "technical_documentation"],
+          "min_processing_time_ms": 300
+        }
+      },
+      {
+        "id": "dp-003",
+        "name": "Knowledge Graph Integration",
+        "description": "LLM and knowledge graph integration processing",
+        "category": "data_processor",
+        "priority": "medium", 
+        "data": {
+          "text": "Integration of large language models with knowledge graphs facilitates enhanced information retrieval and semantic reasoning.",
+          "urgency": 0.4
+        },
+        "expected_outcome": {
+          "success": true,
+          "method": "llm_structured_analysis",
+          "entities_extracted": ["large_language_models", "knowledge_graphs", "semantic_reasoning"],
+          "min_processing_time_ms": 200
+        }
+      },
+      {
+        "id": "dp-004",
+        "name": "Simple Data Processing",
+        "description": "Basic data processing test for legacy compatibility",
+        "category": "data_processor",
+        "priority": "low",
+        "data": {
+          "text": "Some data to process.",
+          "urgency": 0.5
+        },
+        "expected_outcome": {
+          "success": true,
+          "method": "enhanced_fallback",
+          "min_processing_time_ms": 100
+        }
+      }
+    ],
+
+    "identity_verifier": [
+      {
+        "id": "iv-001",
+        "name": "Known Source Verification",
+        "description": "Verification of known demo source ID",
+        "category": "identity_verifier",
+        "priority": "high",
+        "data": {
+          "source_id": "urn:stele:log:1138"
+        },
+        "expected_outcome": {
+          "success": true,
+          "status": "Verified",
+          "trust_score": 0.95,
+          "has_roles": true
+        }
+      },
+      {
+        "id": "iv-002", 
+        "name": "Unknown Source Verification",
+        "description": "Verification of unknown source ID",
+        "category": "identity_verifier",
+        "priority": "medium",
+        "data": {
+          "source_id": "unknown_source_123"
+        },
+        "expected_outcome": {
+          "success": true,
+          "status": "Unknown",
+          "trust_score": 0.2,
+          "has_roles": false
+        }
+      },
+      {
+        "id": "iv-003",
+        "name": "Test User Verification", 
+        "description": "Verification of test user source ID",
+        "category": "identity_verifier",
+        "priority": "medium",
+        "data": {
+          "source_id": "test_user_456"
+        },
+        "expected_outcome": {
+          "success": true,
+          "status": "Unknown",
+          "trust_score": 0.2,
+          "has_roles": false
+        }
+      },
+      {
+        "id": "iv-004",
+        "name": "Enhanced System Identity Linking",
+        "description": "Identity linking test for enhanced systems",
+        "category": "identity_verifier",
+        "priority": "high",
+        "data": {
+          "source_id": "enhanced_system_id_1",
+          "target_id": "enhanced_system_id_2"
+        },
+        "expected_outcome": {
+          "success": true,
+          "status": "linked",
+          "method": "enhanced_identity_linking"
+        }
+      }
+    ],
+
+    "coordination": [
+      {
+        "id": "co-001",
+        "name": "Basic Multi-Specialist Coordination",
+        "description": "Coordination between knowledge, data, and identity specialists",
+        "category": "coordination",
+        "priority": "high",
+        "data": {
+          "text": "Emergent Behaviours in Multi-Agent Systems",
+          "source_id": "urn:stele:log:1138",
+          "urgency": 0.6
+        },
+        "expected_outcome": {
+          "success": true,
+          "handoffs_completed": 3,
+          "verification_success": true,
+          "processing_success": true,
+          "knowledge_linking_success": true
+        }
+      },
+      {
+        "id": "co-002",
+        "name": "Enhanced Multi-Specialist Coordination",
+        "description": "Enhanced coordination with comprehensive data flow",
+        "category": "coordination", 
+        "priority": "high",
+        "data": {
+          "text": "Advanced cognitive architectures enable multi-agent systems to exhibit emergent intelligence through coordinated interaction patterns and distributed decision-making processes.",
+          "source_id": "urn:stele:log:1138",
+          "urgency": 0.7
+        },
+        "expected_outcome": {
+          "success": true,
+          "handoffs_completed": 4,
+          "coordination_success_rate": 100.0,
+          "enhanced_backends": true
+        }
+      },
+      {
+        "id": "co-003",
+        "name": "Ecosystem Integration Test",
+        "description": "Comprehensive integration of all system components",
+        "category": "coordination",
+        "priority": "critical",
+        "data": {
+          "entities": ["autonomous_research_system", "ai_coordination", "enhanced_integration"],
+          "text": "Demonstrating comprehensive integration of real LLM processing, database storage, IAM verification, and machine learning adaptation in a coordinated multi-agent cognitive system with full observability and logging.",
+          "source_id": "urn:stele:log:1138",
+          "urgency": 0.9
+        },
+        "expected_outcome": {
+          "success": true,
+          "successful_operations": 5,
+          "integration_score": 100.0,
+          "q_learning_adaptation": true
+        }
+      }
+    ],
+
+    "stress_testing": {
+      "high_volume": [
+        {
+          "id": "hv-001",
+          "name": "Large-Scale ML Systems",
+          "description": "High-volume processing of complex ML system description",
+          "category": "stress_testing",
+          "subcategory": "high_volume",
+          "priority": "medium",
+          "data": {
+            "text": "Large-scale distributed machine learning systems process terabytes of data across multiple cloud regions, utilising advanced neural networks, transformer architectures, and real-time inference pipelines for autonomous decision-making in complex multi-agent environments.",
+            "entities": ["machine_learning", "terabytes", "neural_networks", "transformers", "cloud", "multi_agent"],
+            "complexity": "high",
+            "scenario_type": "volume_stress"
+          },
+          "expected_outcome": {
+            "success": true,
+            "max_processing_time_ms": 5000,
+            "min_entities_extracted": 6
+          }
+        },
+        {
+          "id": "hv-002", 
+          "name": "Quantum-Blockchain Convergence",
+          "description": "Extreme complexity processing test",
+          "category": "stress_testing",
+          "subcategory": "high_volume",
+          "priority": "high",
+          "data": {
+            "text": "Quantum computing algorithms, blockchain consensus mechanisms, distributed ledger technologies, cryptographic hash functions, zero-knowledge proofs, homomorphic encryption, federated learning protocols, and edge computing architectures converge to create next-generation decentralised AI systems.",
+            "entities": ["quantum_computing", "blockchain", "cryptography", "federated_learning", "edge_computing"],
+            "complexity": "extreme",
+            "scenario_type": "complexity_stress"
+          },
+          "expected_outcome": {
+            "success": true,
+            "max_processing_time_ms": 8000,
+            "min_entities_extracted": 5
+          }
+        },
+        {
+          "id": "hv-003",
+          "name": "Financial Trading Systems",
+          "description": "Performance stress test with real-time requirements", 
+          "category": "stress_testing",
+          "subcategory": "high_volume",
+          "priority": "high",
+          "data": {
+            "text": "Real-time financial trading algorithms process millions of market data points per second, executing high-frequency trades across global exchanges, utilising reinforcement learning and predictive analytics for risk management and portfolio optimisation.",
+            "entities": ["financial_trading", "high_frequency", "reinforcement_learning", "risk_management"],
+            "complexity": "high",
+            "scenario_type": "performance_stress"
+          },
+          "expected_outcome": {
+            "success": true,
+            "max_processing_time_ms": 3000,
+            "min_entities_extracted": 4
+          }
+        }
+      ],
+
+      "concurrent": [
+        {
+          "id": "cn-001",
+          "name": "Multi-threaded ML Processing",
+          "description": "Concurrent processing scenario 1",
+          "category": "stress_testing",
+          "subcategory": "concurrent",
+          "priority": "medium",
+          "data": {
+            "text": "Concurrent AI processing scenario 1: Multi-threaded machine learning",
+            "entities": ["AI", "multi_threaded", "machine_learning"],
+            "source_id": "urn:concurrent:1"
+          },
+          "expected_outcome": {
+            "success": true,
+            "concurrent_safe": true
+          }
+        },
+        {
+          "id": "cn-002",
+          "name": "Distributed Data Analytics",
+          "description": "Concurrent processing scenario 2",
+          "category": "stress_testing", 
+          "subcategory": "concurrent",
+          "priority": "medium",
+          "data": {
+            "text": "Concurrent AI processing scenario 2: Distributed data analytics",
+            "entities": ["distributed", "data", "analytics"],
+            "source_id": "urn:concurrent:2"
+          },
+          "expected_outcome": {
+            "success": true,
+            "concurrent_safe": true
+          }
+        },
+        {
+          "id": "cn-003",
+          "name": "Real-time Stream Processing",
+          "description": "Concurrent processing scenario 3",
+          "category": "stress_testing",
+          "subcategory": "concurrent", 
+          "priority": "medium",
+          "data": {
+            "text": "Concurrent AI processing scenario 3: Real-time stream processing",
+            "entities": ["real_time", "stream", "processing"],
+            "source_id": "urn:concurrent:3"
+          },
+          "expected_outcome": {
+            "success": true,
+            "concurrent_safe": true
+          }
+        },
+        {
+          "id": "cn-004",
+          "name": "Parallel Neural Network Training",
+          "description": "Concurrent processing scenario 4",
+          "category": "stress_testing",
+          "subcategory": "concurrent",
+          "priority": "medium", 
+          "data": {
+            "text": "Concurrent AI processing scenario 4: Parallel neural network training",
+            "entities": ["parallel", "neural_network", "training"],
+            "source_id": "urn:concurrent:4"
+          },
+          "expected_outcome": {
+            "success": true,
+            "concurrent_safe": true
+          }
+        },
+        {
+          "id": "cn-005",
+          "name": "Asynchronous Data Pipelines",
+          "description": "Concurrent processing scenario 5",
+          "category": "stress_testing",
+          "subcategory": "concurrent",
+          "priority": "medium",
+          "data": {
+            "text": "Concurrent AI processing scenario 5: Asynchronous data pipelines", 
+            "entities": ["asynchronous", "data", "pipelines"],
+            "source_id": "urn:concurrent:5"
+          },
+          "expected_outcome": {
+            "success": true,
+            "concurrent_safe": true
+          }
+        }
+      ]
+    },
+
+    "edge_cases": [
+      {
+        "id": "ec-001",
+        "name": "Empty Data Test",
+        "description": "Handling of completely empty input data",
+        "category": "edge_cases",
+        "priority": "high",
+        "data": {
+          "text": "",
+          "entities": [],
+          "source_id": "urn:empty:test",
+          "case_type": "empty_data"
+        },
+        "expected_outcome": {
+          "success": true,
+          "graceful_handling": true,
+          "fallback_used": true
+        }
+      },
+      {
+        "id": "ec-002",
+        "name": "Long Text Processing",
+        "description": "Processing of extremely long text content",
+        "category": "edge_cases",
+        "priority": "medium",
+        "data": {
+          "text": "PLACEHOLDER_FOR_LONG_TEXT",
+          "entities": ["AI", "systems", "data"],
+          "source_id": "urn:long:test", 
+          "case_type": "long_text"
+        },
+        "expected_outcome": {
+          "success": true,
+          "handles_long_text": true,
+          "max_processing_time_ms": 10000
+        }
+      },
+      {
+        "id": "ec-003",
+        "name": "Unicode and Special Characters",
+        "description": "Processing text with international characters and symbols",
+        "category": "edge_cases",
+        "priority": "medium",
+        "data": {
+          "text": "AI系统处理数据 🤖 with émoticons and специальные symbols ñ € ∑ ∆",
+          "entities": ["AI", "data", "symbols"],
+          "source_id": "urn:unicode:test",
+          "case_type": "unicode_text"
+        },
+        "expected_outcome": {
+          "success": true,
+          "unicode_support": true,
+          "entities_extracted": 3
+        }
+      },
+      {
+        "id": "ec-004",
+        "name": "Malformed Source ID",
+        "description": "Handling of invalid/malformed source identifiers",
+        "category": "edge_cases",
+        "priority": "medium",
+        "data": {
+          "text": "Testing with unusual source identifiers",
+          "entities": ["testing", "identifiers"],
+          "source_id": "not://a/valid/urn",
+          "case_type": "malformed_source"
+        },
+        "expected_outcome": {
+          "success": true,
+          "handles_invalid_source": true,
+          "default_trust_score": 0.2
+        }
+      },
+      {
+        "id": "ec-005",
+        "name": "Security Injection Test",
+        "description": "Testing resistance to JSON injection attempts",
+        "category": "edge_cases",
+        "priority": "high",
+        "data": {
+          "text": "Test with JSON injection: {\"malicious\": true, \"exploit\": \"attempt\"}",
+          "entities": ["test", "injection"],
+          "source_id": "urn:security:test",
+          "case_type": "security_test"
+        },
+        "expected_outcome": {
+          "success": true,
+          "security_safe": true,
+          "no_code_execution": true
+        }
+      }
+    ],
+
+    "failure_recovery": [
+      {
+        "id": "fr-001",
+        "name": "Malformed JSON Input",
+        "description": "Recovery from malformed JSON structure in input",
+        "category": "failure_recovery",
+        "priority": "high",
+        "data": {
+          "text": "Invalid JSON structure: {\"unclosed\": \"bracket\"",
+          "entities": ["invalid", "json"],
+          "scenario_type": "malformed_json"
+        },
+        "expected_outcome": {
+          "graceful_failure": true,
+          "error_logged": true,
+          "fallback_processing": true
+        }
+      },
+      {
+        "id": "fr-002",
+        "name": "Excessive Entity Extraction",
+        "description": "Handling of scenarios with excessive entity duplication",
+        "category": "failure_recovery",
+        "priority": "medium",
+        "data": {
+          "text": "Deeply nested AI systems within AI systems within AI systems utilising recursive neural networks",
+          "entities": ["AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI", "AI"],
+          "scenario_type": "excessive_entities"
+        },
+        "expected_outcome": {
+          "graceful_handling": true,
+          "entity_deduplication": true,
+          "performance_maintained": true
+        }
+      },
+      {
+        "id": "fr-003",
+        "name": "Null Text Input",
+        "description": "Recovery from null text input",
+        "category": "failure_recovery",
+        "priority": "high",
+        "data": {
+          "text": null,
+          "scenario_type": "null_text"
+        },
+        "expected_outcome": {
+          "graceful_failure": true,
+          "error_handling": true,
+          "system_stability": true
+        }
+      },
+      {
+        "id": "fr-004", 
+        "name": "Wrong Data Types",
+        "description": "Recovery from incorrect data types in input",
+        "category": "failure_recovery",
+        "priority": "high",
+        "data": {
+          "text": 12345,
+          "entities": "not_an_array",
+          "scenario_type": "wrong_types"
+        },
+        "expected_outcome": {
+          "graceful_failure": true,
+          "type_checking": true,
+          "error_reporting": true
+        }
+      }
+    ]
+  }
+}

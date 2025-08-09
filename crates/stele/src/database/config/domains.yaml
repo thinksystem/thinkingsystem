@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Defines high-level semantic domains. These domains can be used to provide
+# context for the NLU, helping to disambiguate terms or apply specific
+# processing rules. The current implementation is a placeholder.
+#
+# A future implementation might include domain-specific vocabularies,
+# entity types, or relationship rules.
+
+domains:
+  # Example Domain 1: Technology & Engineering
+  # For concepts related to software, hardware, systems, and processes.
+  - {}
+    # name: "Technology & Engineering"
+    # description: "Covers software, hardware, infrastructure, and engineering concepts."
+    # keywords: ["system", "service", "api", "database", "protocol", "framework"]
+    # entity_types: ["system", "component", "software", "vulnerability"]
+
+  # Example Domain 2: Security & Intelligence
+  # For concepts related to threats, vulnerabilities, actors, and security operations.
+  - {}
+    # name: "Security & Intelligence"
+    # description: "Covers cybersecurity, threats, intelligence analysis, and actors."
+    # keywords: ["threat", "actor", "malware", "cve", "attack", "mitigation"]
+    # entity_types: ["threat_actor", "malware_family", "security_event", "indicator"]
+
+  # Example Domain 3: Business & Organisations
+  # For concepts related to companies, teams, projects, and people.
+  - {}
+    # name: "Business & Organisations"
+    # description: "Covers companies, people, projects, and organisational structures."
+    # keywords: ["company", "project", "team", "person", "role", "product"]
+    # entity_types: ["organisation", "person", "project"]

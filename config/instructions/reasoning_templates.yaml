@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+reasoning_templates:
+  - template_id: "problem_solving"
+    description: "Systematic approach to problem resolution"
+    steps:
+      - understand_problem:
+          description: "Clearly define the problem"
+          questions:
+            - "What exactly needs to be solved?"
+            - "What are the constraints?"
+            - "What is the desired outcome?"
+      - gather_information:
+          description: "Collect relevant data and context"
+          questions:
+            - "What information is available?"
+            - "What additional data is needed?"
+            - "Are there similar solved problems?"
+      - generate_solutions:
+          description: "Brainstorm potential approaches"
+          questions:
+            - "What are possible solutions?"
+            - "What are the trade-offs?"
+            - "Which approaches are most promising?"
+      - evaluate_options:
+          description: "Assess feasibility and effectiveness"
+          criteria:
+            - feasibility
+            - effectiveness
+            - resource_requirements
+            - risk_level
+      - implement_solution:
+          description: "Execute the chosen approach"
+          considerations:
+            - "How to implement step by step?"
+            - "What resources are needed?"
+            - "How to monitor progress?"
+      - review_results:
+          description: "Evaluate outcomes and learn"
+          questions:
+            - "Did the solution work?"
+            - "What was learned?"
+            - "How can the process be improved?"
+
+  - template_id: "decision_making"
+    description: "Structured approach to making choices"
+    steps:
+      - frame_decision:
+          description: "Define what decision needs to be made"
+      - identify_options:
+          description: "List all possible choices"
+      - establish_criteria:
+          description: "Define evaluation criteria"
+      - evaluate_options:
+          description: "Score options against criteria"
+      - make_decision:
+          description: "Choose the best option"
+      - plan_implementation:
+          description: "Create action plan"
+      - monitor_outcomes:
+          description: "Track results and adjust"

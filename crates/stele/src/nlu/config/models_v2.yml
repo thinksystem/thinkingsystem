@@ -1,0 +1,241 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# NLU Model Configuration v2.0
+# A dynamic, feedback-driven configuration for model selection.
+
+# -----------------------------------
+# Model Definitions
+# -----------------------------------
+# Each model includes optional, detailed metrics for performance and cost.
+# The engine uses these as a baseline and updates them based on real-world performance.
+#
+# - quality_score: Subjective score (0.0 to 1.0) representing model capability. Higher is better.
+# - avg_response_ms: Historical average response time in milliseconds.
+# - avg_tokens_per_second: Historical average generation speed.
+# - cost_per_million_tokens: Granular cost for input (prompt) and output (completion).
+#
+models:
+  # --- Ollama Models (Local, Free) ---
+  - name: llama3.2:3b
+    provider: ollama
+    capabilities:
+      [reasoning, classification, sentiment, fast_extraction, code_generation]
+    quality_score: 0.7
+    max_tokens: 8192
+    # Optional performance metrics (will be learned if not present)
+    avg_response_ms: 1500
+    avg_tokens_per_second: 50
+
+  - name: llama3.1:8b
+    provider: ollama
+    capabilities:
+      [
+        reasoning,
+        complex_reasoning,
+        classification,
+        sentiment,
+        full_extraction,
+        code_generation,
+      ]
+    quality_score: 0.8
+    max_tokens: 32768
+    avg_response_ms: 4500
+    avg_tokens_per_second: 30
+
+  # --- Anthropic Models (API) ---
+  - name: claude-3-5-haiku-latest
+    provider: anthropic
+    capabilities: [classification, sentiment, fast_extraction, tokenization]
+    quality_score: 0.75
+    max_tokens: 200000
+    avg_response_ms: 600
+    avg_tokens_per_second: 200
+    cost_per_million_tokens:
+      input: 0.25
+      output: 1.25
+
+  - name: claude-3-5-sonnet-latest
+    provider: anthropic
+    capabilities:
+      [
+        reasoning,
+        classification,
+        sentiment,
+        multi_step_analysis,
+        full_extraction,
+        code_generation,
+      ]
+    quality_score: 0.9
+    max_tokens: 200000
+    avg_response_ms: 1800
+    avg_tokens_per_second: 120
+    cost_per_million_tokens:
+      input: 3.00
+      output: 15.00
+
+  - name: claude-3-7-sonnet-latest
+    provider: anthropic
+    capabilities:
+      [
+        reasoning,
+        complex_reasoning,
+        classification,
+        sentiment,
+        multi_step_analysis,
+        full_extraction,
+        code_generation,
+      ]
+    quality_score: 0.92
+    max_tokens: 200000
+    avg_response_ms: 2000
+    avg_tokens_per_second: 110
+    cost_per_million_tokens:
+      input: 3.00
+      output: 15.00
+
+  - name: claude-sonnet-4-20250514
+    provider: anthropic
+    capabilities:
+      [
+        reasoning,
+        complex_reasoning,
+        classification,
+        sentiment,
+        multi_step_analysis,
+        full_extraction,
+        code_generation,
+      ]
+    quality_score: 0.96
+    max_tokens: 200000
+    avg_response_ms: 3000
+    avg_tokens_per_second: 90
+    cost_per_million_tokens:
+      input: 15.00
+      output: 75.00
+
+  # --- OpenAI Models (API) ---
+  - name: gpt-4o
+    provider: openai
+    capabilities:
+      [
+        reasoning,
+        complex_reasoning,
+        classification,
+        sentiment,
+        full_extraction,
+        code_generation,
+      ]
+    quality_score: 0.95
+    max_tokens: 128000
+    avg_response_ms: 2200
+    avg_tokens_per_second: 100
+    cost_per_million_tokens:
+      input: 5.00
+      output: 15.00
+
+  - name: gpt-4o-mini
+    provider: openai
+    capabilities:
+      [reasoning, classification, sentiment, fast_extraction, code_generation]
+    quality_score: 0.8
+    max_tokens: 128000
+    avg_response_ms: 700
+    avg_tokens_per_second: 180
+    cost_per_million_tokens:
+      input: 0.15
+      output: 0.60
+
+# -----------------------------------
+# Selection Strategy
+# -----------------------------------
+# Defines how the engine prioritises models. Instead of a fixed fallback list,
+# it uses a weighted scoring system based on a chosen intent.
+#
+selection_strategy:
+  # Choose your primary goal:
+  # - Balanced: Good mix of performance, cost, and quality.
+  # - CostOptimised: Prioritises the cheapest models. Free models are heavily favoured.
+  # - MaxSpeed: Prioritises the fastest models (response time and tokens/sec).
+  # - MaxQuality: Prioritises models with the highest quality_score.
+  intent: CostOptimised # Favour local Ollama models
+
+  # The engine uses these weights to score models based on the chosen intent.
+  # You can customise these weights. They should sum to 1.0.
+  weights:
+    Balanced:
+      quality: 0.4
+      speed: 0.3
+      cost: 0.3
+    CostOptimised:
+      quality: 0.1
+      speed: 0.2
+      cost: 0.7
+    MaxSpeed:
+      quality: 0.2
+      speed: 0.6
+      cost: 0.2
+    MaxQuality:
+      quality: 0.7
+      speed: 0.1
+      cost: 0.2
+
+  # General request handling
+  max_retries: 3
+  timeout_seconds: 120
+  fallback_on_failure: true
+
+# -----------------------------------
+# Performance Feedback Loop
+# -----------------------------------
+# Enables the engine to learn from actual performance and update its metrics.
+#
+feedback:
+  # If true, the engine will update performance metrics after each successful call.
+  update_on_success: true
+
+  # Path to a file where learned performance data is stored (e.g., performance.json).
+  # This makes the engine's knowledge persistent across restarts.
+  performance_db_path: "performance_db.json"
+
+  # The weighting factor (alpha) for the exponential moving average.
+  # A value closer to 1.0 gives more weight to the newest data point.
+  # A value closer to 0.0 gives more weight to historical data.
+  # new_avg = (alpha * new_value) + ((1 - alpha) * old_avg)
+  learning_rate: 0.1
+
+# -----------------------------------
+# Provider Configurations
+# -----------------------------------
+providers:
+  ollama:
+    timeout_seconds: 60
+    max_retries: 2
+    authentication:
+      type: "none"
+    rate_limits:
+      concurrent_requests: 3
+
+  anthropic:
+    timeout_seconds: 30
+    max_retries: 3
+    authentication:
+      type: "api_key"
+      header: "x-api-key"
+      version_header: "anthropic-version"
+      version: "2023-06-01"
+    rate_limits:
+      requests_per_minute: 60
+      requests_per_hour: 1000
+      concurrent_requests: 5
+
+  openai:
+    timeout_seconds: 30
+    max_retries: 3
+    authentication:
+      type: "api_key"
+      header: "Authorisation"
+      version: "v1"
+    rate_limits:
+      requests_per_minute: 60
+      requests_per_hour: 1000
+      concurrent_requests: 5

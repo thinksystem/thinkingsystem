@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Simplified NLU Processing Rules for Testing
+# Single policy that always uses bundled extraction
+
+policies:
+  - name: test_bundled_extraction
+    priority: 100
+    description: "Always use bundled extraction for testing"
+    conditions: {} # No conditions - this will match everything
+    strategy:
+      type: parallel
+      actions:
+        - task: bundled_extraction
+          model_capability: full_extraction
+          priority: 1
+      stages: []
+
+# Global settings
+global_settings:
+  max_parallel_tasks: 1
+  timeout_seconds: 30
+  enable_caching: false
+
+# Task definitions - only keep what we need
+tasks:
+  bundled_extraction:
+    description: "Extract multiple data types in one call"
+    required_capabilities: ["extraction", "reasoning", "full_extraction", "fast_extraction"]

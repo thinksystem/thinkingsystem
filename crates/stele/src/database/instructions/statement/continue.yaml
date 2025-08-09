@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: continue
+spec:
+  syntax: "CONTINUE;"
+  summary: "Skips the current iteration of a loop and proceeds to the next."
+  variants:
+    - name: Default
+      syntax: "CONTINUE;"
+      summary: "Skips the current iteration of a loop and proceeds to the next."
+      examples:
+        - setup:
+            - "CREATE person:1 SET age = 25;"
+            - "CREATE person:2 SET age = 17;"
+            - "CREATE person:3 SET age = 42;"
+          query: |
+            FOR $person IN (SELECT id, age FROM person) {
+            	IF ($person.age < 18) {
+            		CONTINUE;
+            	};
+            	UPDATE $person.id SET can_vote = true;
+            };
+        - setup:
+            - |
+              LET $weather = [
+              	{ city: 'London', temperature: 22.2, timestamp: 1722565566389 },
+              	NONE,
+              	{ city: 'London', temperature: 20.1, timestamp: 1722652002699 },
+                { city: 'Phoenix', temperature: 45.1, timestamp: 1722565642160 },
+                NONE,
+                NONE,
+                { city: 'Phoenix', temperature: 45.1, timestamp: 1722652070372 },
+              ];
+          query: |
+            FOR $data IN $weather {
+                IF $data IS NONE {
+                    CONTINUE;
+                };
+            	CREATE weather CONTENT $data;
+            };

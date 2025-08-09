@@ -1,0 +1,1479 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+operator_groups:
+  logical:
+    description: "Operators for boolean logic."
+    definitions:
+      - type: Operator
+        name: '&&'
+        spec:
+          aliases: ['AND']
+          operator_type: binary
+          precedence: 2
+          category: 'logical'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'IF'
+          summary: "Returns rightmost truthy value or the first falsy value. Short-circuits."
+          documentation:
+            description: "The logical AND operator evaluates operands from left to right. If an operand is falsy, its value is returned immediately. If all operands are truthy, the value of the last operand is returned."
+          signature: "(any, any) -> any"
+          operands: { left: any, right: any }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "Two truthy values"
+              query: "RETURN 'hello' && 1;"
+              output: 1
+            - title: "First value is falsy"
+              query: "RETURN 0 && true;"
+              output: 0
+
+      - type: Operator
+        name: '||'
+        spec:
+          aliases: ['OR']
+          operator_type: binary
+          precedence: 1
+          category: 'logical'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'IF'
+          summary: "Returns first truthy value or rightmost falsy value. Short-circuits."
+          documentation:
+            description: "The logical OR operator evaluates operands from left to right. If an operand is truthy, its value is returned immediately. If all operands are falsy, the value of the last operand is returned."
+          signature: "(any, any) -> any"
+          operands: { left: any, right: any }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "First value is truthy"
+              query: "RETURN 'hello' || false;"
+              output: "'hello'"
+            - title: "Both values are falsy"
+              query: "RETURN NONE || 0;"
+              output: 0
+
+      - type: Operator
+        name: '!'
+        spec:
+          aliases: ['NOT']
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'logical'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'IF'
+          inverse_of: '!!'
+          summary: "Logical NOT. Returns boolean."
+          documentation:
+            description: "The logical NOT operator converts its operand to a boolean value and then negates it. It returns `true` for falsy values and `false` for truthy values."
+          signature: "(any) -> bool"
+          operands: { operand: any }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Negating a truthy value"
+              query: "RETURN !'hello';"
+              output: false
+            - title: "Negating a falsy value"
+              query: "RETURN !0;"
+              output: true
+
+      - type: Operator
+        name: '!!'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'logical'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'IF'
+          inverse_of: '!'
+          summary: "Casts to boolean. Returns boolean."
+          documentation:
+            description: "The double NOT operator is a shorthand for casting any value to its boolean equivalent. It is equivalent to `<bool>value`."
+          signature: "(any) -> bool"
+          operands: { operand: any }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Casting a truthy value"
+              query: "RETURN !!'hello';"
+              output: true
+            - title: "Casting a falsy value"
+              query: "RETURN !!0;"
+              output: false
+
+  nullish:
+    description: "Operators for handling null or undefined values."
+    definitions:
+      - type: Operator
+        name: '??'
+        spec:
+          operator_type: binary
+          precedence: 10
+          category: 'nullish'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'SELECT'
+            - 'UPDATE'
+          summary: "Returns the first operand if it is not NULL, otherwise returns the second."
+          documentation:
+            description: "The nullish coalescing operator returns its right-hand side operand when its left-hand side operand is `NONE` or `NULL`, and otherwise returns its left-hand side operand."
+          signature: "(any, any) -> any"
+          operands: { left: any, right: any }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "Left-hand is not null"
+              query: "RETURN 0 ?? 'default';"
+              output: 0
+            - title: "Left-hand is null"
+              query: "RETURN NONE ?? 'default';"
+              output: "'default'"
+
+      - type: Operator
+        name: '?:'
+        spec:
+          operator_type: binary
+          precedence: 10
+          category: 'nullish'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'SELECT'
+            - 'UPDATE'
+          summary: "Returns the first operand if it is truthy, otherwise returns the second."
+          documentation:
+            description: "The elvis operator returns its right-hand side operand when its left-hand side operand is falsy (e.g., `false`, `0`, `''`, `NONE`), and otherwise returns its left-hand side operand."
+          signature: "(any, any) -> any"
+          operands: { left: any, right: any }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "Left-hand is truthy"
+              query: "RETURN 'hello' ?: 'default';"
+              output: "'hello'"
+            - title: "Left-hand is falsy"
+              query: "RETURN 0 ?: 'default';"
+              output: "'default'"
+
+  equality:
+    description: "Operators for comparing values for equality."
+    definitions:
+      - type: Operator
+        name: '='
+        spec:
+          aliases: ['IS']
+          operator_type: binary
+          precedence: 3
+          category: 'equality'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '!='
+          summary: "Equality with type coercion."
+          documentation:
+            description: "Checks for equality between two values. If the types are different, the engine will attempt to coerce them to a common type before comparison. For example, the string '5' is equal to the number 5."
+          signature: "(any, any) -> bool"
+          operands: { left: any, right: any }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Comparing coerced types"
+              query: "RETURN '5' = 5;"
+              output: true
+
+      - type: Operator
+        name: '!='
+        spec:
+          aliases: ['IS NOT']
+          operator_type: binary
+          precedence: 3
+          category: 'equality'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '='
+          summary: "Inequality with type coercion."
+          documentation:
+            description: "Checks for inequality between two values, with type coercion."
+          signature: "(any, any) -> bool"
+          operands: { left: any, right: any }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Comparing coerced types"
+              query: "RETURN '5' != 5;"
+              output: false
+
+      - type: Operator
+        name: '=='
+        spec:
+          operator_type: binary
+          precedence: 3
+          category: 'equality'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          summary: "Strict equality without type coercion."
+          documentation:
+            description: "Checks for strict equality between two values. No type coercion is performed; the values must be of the same type and have the same value to be considered equal."
+          signature: "(any, any) -> bool"
+          operands: { left: any, right: any }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Comparing different types"
+              query: "RETURN '5' == 5;"
+              output: false
+
+      - type: Operator
+        name: '?='
+        spec:
+          operator_type: binary
+          precedence: 3
+          category: 'equality'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Checks if any element in an array equals the right operand."
+          documentation:
+            description: "The 'any equals' operator returns true if any element in the left-hand array is equal (with type coercion) to the right-hand value. Returns false for an empty array."
+          signature: "(array, any) -> bool"
+          operands: { left: array, right: any }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Array contains the value"
+              query: "RETURN [1, 2, '3'] ?= 3;"
+              output: true
+
+      - type: Operator
+        name: '*='
+        spec:
+          operator_type: binary
+          precedence: 3
+          category: 'equality'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Checks if all elements in an array equal the right operand."
+          documentation:
+            description: "The 'all equals' operator returns true if all elements in the left-hand array are equal (with type coercion) to the right-hand value. Returns true for an empty array."
+          signature: "(array, any) -> bool"
+          operands: { left: array, right: any }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "All elements are equal"
+              query: "RETURN [5, '5'] *= 5;"
+              output: true
+
+  comparison:
+    description: "Operators for comparing magnitudes."
+    definitions:
+      - type: Operator
+        name: '>'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'comparison'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '<='
+          summary: "Greater than."
+          documentation:
+            description: "Checks if the left-hand operand is greater than the right-hand operand."
+          signature: "(comparable, comparable) -> bool"
+          operands: { left: comparable, right: comparable }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Simple numeric comparison"
+              query: "RETURN 10 > 5;"
+              output: true
+
+      - type: Operator
+        name: '>='
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'comparison'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '<'
+          summary: "Greater than or equal to."
+          documentation:
+            description: "Checks if the left-hand operand is greater than or equal to the right-hand operand."
+          signature: "(comparable, comparable) -> bool"
+          operands: { left: comparable, right: comparable }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Simple numeric comparison"
+              query: "RETURN 5 >= 5;"
+              output: true
+
+      - type: Operator
+        name: '<'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'comparison'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '>='
+          summary: "Less than."
+          documentation:
+            description: "Checks if the left-hand operand is less than the right-hand operand."
+          signature: "(comparable, comparable) -> bool"
+          operands: { left: comparable, right: comparable }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Simple numeric comparison"
+              query: "RETURN 5 < 10;"
+              output: true
+
+      - type: Operator
+        name: '<='
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'comparison'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '>'
+          summary: "Less than or equal to."
+          documentation:
+            description: "Checks if the left-hand operand is less than or equal to the right-hand operand."
+          signature: "(comparable, comparable) -> bool"
+          operands: { left: comparable, right: comparable }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Simple numeric comparison"
+              query: "RETURN 5 <= 5;"
+              output: true
+
+  arithmetic:
+    description: "Operators for mathematical calculations."
+    definitions:
+      - type: Operator
+        name: '+'
+        spec:
+          operator_type: binary
+          precedence: 6
+          category: 'arithmetic'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Addition or string concatenation."
+          documentation:
+            description: "Performs arithmetic addition for numbers or string concatenation for strings. When mixed types are encountered, the behaviour depends on the specific types involved."
+          signature: "(number, number) -> number | (string, string) -> string"
+          operands: { left: "number|string", right: "number|string" }
+          result_type: "number|string"
+          indexed: false
+          examples:
+            - title: "Numeric addition"
+              query: "RETURN 5 + 3;"
+              output: 8
+            - title: "String concatenation"
+              query: "RETURN 'Hello' + ' World';"
+              output: "'Hello World'"
+
+      - type: Operator
+        name: '-'
+        spec:
+          operator_type: binary
+          precedence: 6
+          category: 'arithmetic'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Subtraction."
+          documentation:
+            description: "Performs arithmetic subtraction for numbers."
+          signature: "(number, number) -> number"
+          operands: { left: number, right: number }
+          result_type: number
+          indexed: false
+          examples:
+            - title: "Simple subtraction"
+              query: "RETURN 10 - 3;"
+              output: 7
+
+      - type: Operator
+        name: '*'
+        spec:
+          operator_type: binary
+          precedence: 7
+          category: 'arithmetic'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          inverse_of: '/'
+          summary: "Multiplication."
+          documentation:
+            description: "Performs arithmetic multiplication for numbers."
+          signature: "(number, number) -> number"
+          operands: { left: number, right: number }
+          result_type: number
+          indexed: false
+          examples:
+            - title: "Simple multiplication"
+              query: "RETURN 5 * 3;"
+              output: 15
+
+      - type: Operator
+        name: '/'
+        spec:
+          operator_type: binary
+          precedence: 7
+          category: 'arithmetic'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          inverse_of: '*'
+          summary: "Division."
+          documentation:
+            description: "Performs arithmetic division for numbers. Division by zero returns infinity."
+          signature: "(number, number) -> number"
+          operands: { left: number, right: number }
+          result_type: number
+          indexed: false
+          examples:
+            - title: "Simple division"
+              query: "RETURN 15 / 3;"
+              output: 5
+
+      - type: Operator
+        name: '%'
+        spec:
+          operator_type: binary
+          precedence: 7
+          category: 'arithmetic'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Modulo (remainder)."
+          documentation:
+            description: "Returns the remainder after division of the left operand by the right operand."
+          signature: "(number, number) -> number"
+          operands: { left: number, right: number }
+          result_type: number
+          indexed: false
+          examples:
+            - title: "Modulo operation"
+              query: "RETURN 10 % 3;"
+              output: 1
+
+  exponential:
+    description: "Operators for exponential calculations."
+    definitions:
+      - type: Operator
+        name: '**'
+        spec:
+          operator_type: binary
+          precedence: 8
+          category: 'exponential'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Exponentiation."
+          documentation:
+            description: "Raises the left operand to the power of the right operand."
+          signature: "(number, number) -> number"
+          operands: { left: number, right: number }
+          result_type: number
+          indexed: false
+          examples:
+            - title: "Simple exponentiation"
+              query: "RETURN 2 ** 3;"
+              output: 8
+
+  membership:
+    description: "Operators for checking membership and containment."
+    definitions:
+      - type: Operator
+        name: 'IN'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'membership'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: 'NOT IN'
+          summary: "Checks if the left operand is contained in the right operand."
+          documentation:
+            description: "Returns true if the left-hand value is found within the right-hand collection (array, object, or string)."
+          signature: "(any, collection) -> bool"
+          operands: { left: any, right: collection }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Value in array"
+              query: "RETURN 'apple' IN ['apple', 'banana', 'cherry'];"
+              output: true
+
+      - type: Operator
+        name: 'NOT IN'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'membership'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: 'IN'
+          summary: "Checks if the left operand is not contained in the right operand."
+          documentation:
+            description: "Returns true if the left-hand value is not found within the right-hand collection."
+          signature: "(any, collection) -> bool"
+          operands: { left: any, right: collection }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Value not in array"
+              query: "RETURN 'orange' NOT IN ['apple', 'banana', 'cherry'];"
+              output: true
+
+      - type: Operator
+        name: 'CONTAINS'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'membership'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: 'NOT CONTAINS'
+          summary: "Checks if the left operand contains the right operand."
+          documentation:
+            description: "Returns true if the left-hand collection contains the right-hand value. This is the inverse of the IN operator."
+          signature: "(collection, any) -> bool"
+          operands: { left: collection, right: any }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Array contains value"
+              query: "RETURN ['apple', 'banana', 'cherry'] CONTAINS 'apple';"
+              output: true
+
+      - type: Operator
+        name: 'NOT CONTAINS'
+        spec:
+          aliases: ['CONTAINSNOT']
+          operator_type: binary
+          precedence: 4
+          category: 'membership'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: 'CONTAINS'
+          summary: "Checks if the left operand does not contain the right operand."
+          documentation:
+            description: "Returns true if the left-hand collection does not contain the right-hand value."
+          signature: "(collection, any) -> bool"
+          operands: { left: collection, right: any }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Array does not contain value"
+              query: "RETURN ['apple', 'banana', 'cherry'] NOT CONTAINS 'orange';"
+              output: true
+
+      - type: Operator
+        name: 'INSIDE'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'membership'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: 'NOT INSIDE'
+          summary: "Checks if the left operand is inside the right operand (for geometries)."
+          documentation:
+            description: "Returns true if the left-hand geometry is inside the right-hand geometry. Used for spatial queries."
+          signature: "(geometry, geometry) -> bool"
+          operands: { left: geometry, right: geometry }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Point inside polygon"
+              query: "RETURN {type: 'Point', coordinates: [0, 0]} INSIDE {type: 'Polygon', coordinates: [[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]]]};"
+              output: true
+
+      - type: Operator
+        name: 'NOT INSIDE'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'membership'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: 'INSIDE'
+          summary: "Checks if the left operand is not inside the right operand (for geometries)."
+          documentation:
+            description: "Returns true if the left-hand geometry is not inside the right-hand geometry."
+          signature: "(geometry, geometry) -> bool"
+          operands: { left: geometry, right: geometry }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Point not inside polygon"
+              query: "RETURN {type: 'Point', coordinates: [2, 2]} NOT INSIDE {type: 'Polygon', coordinates: [[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]]]};"
+              output: true
+
+  string_matching:
+    description: "Operators for string pattern matching."
+    definitions:
+      - type: Operator
+        name: '~'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'string_matching'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '!~'
+          summary: "Regular expression match."
+          documentation:
+            description: "Returns true if the left-hand string matches the right-hand regular expression pattern."
+          signature: "(string, string) -> bool"
+          operands: { left: string, right: string }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Regex match"
+              query: "RETURN 'hello123' ~ '[a-z]+[0-9]+';"
+              output: true
+
+      - type: Operator
+        name: '!~'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'string_matching'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          inverse_of: '~'
+          summary: "Regular expression non-match."
+          documentation:
+            description: "Returns true if the left-hand string does not match the right-hand regular expression pattern."
+          signature: "(string, string) -> bool"
+          operands: { left: string, right: string }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Regex non-match"
+              query: "RETURN 'hello' !~ '[0-9]+';"
+              output: true
+
+      - type: Operator
+        name: '?~'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'string_matching'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          summary: "Fuzzy string match."
+          documentation:
+            description: "Returns true if the left-hand string fuzzy matches the right-hand pattern. Uses approximate string matching algorithms."
+          signature: "(string, string) -> bool"
+          operands: { left: string, right: string }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Fuzzy match"
+              query: "RETURN 'hello' ?~ 'hello';"
+              output: true
+
+  geospatial:
+    description: "Operators for geospatial calculations and comparisons."
+    definitions:
+      - type: Operator
+        name: '@'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'geospatial'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          summary: "Checks if geometries intersect."
+          documentation:
+            description: "Returns true if the left-hand geometry intersects with the right-hand geometry. Used for spatial queries to find overlapping or touching geometries."
+          signature: "(geometry, geometry) -> bool"
+          operands: { left: geometry, right: geometry }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Geometries intersect"
+              query: "RETURN {type: 'Point', coordinates: [0, 0]} @ {type: 'Polygon', coordinates: [[[-1,-1],[1,-1],[1,1],[-1,1],[-1,-1]]]};"
+              output: true
+
+      - type: Operator
+        name: '<|'
+        spec:
+          operator_type: binary
+          precedence: 4
+          category: 'geospatial'
+          contexts:
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+          summary: "K-nearest neighbours (KNN) search."
+          documentation:
+            description: "Finds the K nearest neighbours to a given point. The left operand is the reference point, and the right operand specifies the number of neighbours to find."
+          signature: "(geometry, number) -> bool"
+          operands: { left: geometry, right: number }
+          result_type: bool
+          indexed: true
+          examples:
+            - title: "Find 5 nearest points"
+              query: "SELECT * FROM locations WHERE coordinates <|5,0,0| [0, 0];"
+
+  assignment:
+    description: "Operators for assignment and modification."
+    definitions:
+      - type: Operator
+        name: '+='
+        spec:
+          operator_type: binary
+          precedence: 1
+          category: 'assignment'
+          contexts:
+            - 'UPDATE'
+            - 'CREATE'
+            - 'LET'
+          summary: "Addition assignment."
+          documentation:
+            description: "Adds the right operand to the left operand and assigns the result to the left operand. For arrays, this appends elements."
+          signature: "(number, number) -> number | (array, any) -> array"
+          operands: { left: "number|array", right: "number|any" }
+          result_type: "number|array"
+          indexed: false
+          examples:
+            - title: "Numeric addition assignment"
+              query: "UPDATE person SET age += 1;"
+            - title: "Array append"
+              query: "UPDATE person SET skills += 'new_skill';"
+
+      - type: Operator
+        name: '-='
+        spec:
+          operator_type: binary
+          precedence: 1
+          category: 'assignment'
+          contexts:
+            - 'UPDATE'
+            - 'CREATE'
+            - 'LET'
+          summary: "Subtraction assignment."
+          documentation:
+            description: "Subtracts the right operand from the left operand and assigns the result to the left operand. For arrays, this removes elements."
+          signature: "(number, number) -> number | (array, any) -> array"
+          operands: { left: "number|array", right: "number|any" }
+          result_type: "number|array"
+          indexed: false
+          examples:
+            - title: "Numeric subtraction assignment"
+              query: "UPDATE person SET age -= 1;"
+            - title: "Array element removal"
+              query: "UPDATE person SET skills -= 'old_skill';"
+
+  casting:
+    description: "Operators for type conversion."
+    definitions:
+      - type: Operator
+        name: '<bool>'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'casting'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'WHERE'
+            - 'HAVING'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Casts value to boolean."
+          documentation:
+            description: "Converts the operand to a boolean value according to SurrealDB's truthiness rules."
+          signature: "(any) -> bool"
+          operands: { operand: any }
+          result_type: bool
+          indexed: false
+          examples:
+            - title: "Cast string to bool"
+              query: "RETURN <bool>'hello';"
+              output: true
+            - title: "Cast number to bool"
+              query: "RETURN <bool>0;"
+              output: false
+
+      - type: Operator
+        name: '<int>'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'casting'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'WHERE'
+            - 'HAVING'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Casts value to integer."
+          documentation:
+            description: "Converts the operand to an integer value. Strings are parsed, floats are truncated."
+          signature: "(any) -> int"
+          operands: { operand: any }
+          result_type: int
+          indexed: false
+          examples:
+            - title: "Cast string to int"
+              query: "RETURN <int>'42';"
+              output: 42
+            - title: "Cast float to int"
+              query: "RETURN <int>3.14;"
+              output: 3
+
+      - type: Operator
+        name: '<float>'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'casting'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'WHERE'
+            - 'HAVING'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Casts value to float."
+          documentation:
+            description: "Converts the operand to a floating-point number."
+          signature: "(any) -> float"
+          operands: { operand: any }
+          result_type: float
+          indexed: false
+          examples:
+            - title: "Cast string to float"
+              query: "RETURN <float>'3.14';"
+              output: 3.14
+
+      - type: Operator
+        name: '<string>'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'casting'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'WHERE'
+            - 'HAVING'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Casts value to string."
+          documentation:
+            description: "Converts the operand to a string representation."
+          signature: "(any) -> string"
+          operands: { operand: any }
+          result_type: string
+          indexed: false
+          examples:
+            - title: "Cast number to string"
+              query: "RETURN <string>42;"
+              output: "'42'"
+
+      - type: Operator
+        name: '<array>'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'casting'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'WHERE'
+            - 'HAVING'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Casts value to array."
+          documentation:
+            description: "Converts the operand to an array. Single values become single-element arrays."
+          signature: "(any) -> array"
+          operands: { operand: any }
+          result_type: array
+          indexed: false
+          examples:
+            - title: "Cast single value to array"
+              query: "RETURN <array>'hello';"
+              output: "['hello']"
+
+      - type: Operator
+        name: '<object>'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'casting'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'WHERE'
+            - 'HAVING'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Casts value to object."
+          documentation:
+            description: "Converts the operand to an object. Arrays become objects with numeric keys."
+          signature: "(any) -> object"
+          operands: { operand: any }
+          result_type: object
+          indexed: false
+          examples:
+            - title: "Cast array to object"
+              query: "RETURN <object>['a', 'b'];"
+              output: "{0: 'a', 1: 'b'}"
+
+  traversal:
+    description: "Operators for graph traversal and relationship navigation."
+    definitions:
+      - type: Operator
+        name: '->'
+        spec:
+          operator_type: binary
+          precedence: 9
+          category: 'traversal'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'DELETE'
+            - 'UPDATE'
+          summary: "Outbound edge traversal."
+          documentation:
+            description: "Traverses outbound relationships from the left operand. Can specify relationship types and target nodes."
+          signature: "(record, string) -> array"
+          operands: { left: record, right: string }
+          result_type: array
+          indexed: true
+          examples:
+            - title: "Traverse outbound relationships"
+              query: "SELECT * FROM person->knows;"
+            - title: "Traverse specific relationship type"
+              query: "SELECT * FROM person->knows->person;"
+
+      - type: Operator
+        name: '<-'
+        spec:
+          operator_type: binary
+          precedence: 9
+          category: 'traversal'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'DELETE'
+            - 'UPDATE'
+          summary: "Inbound edge traversal."
+          documentation:
+            description: "Traverses inbound relationships to the right operand. Can specify relationship types and source nodes."
+          signature: "(string, record) -> array"
+          operands: { left: string, right: record }
+          result_type: array
+          indexed: true
+          examples:
+            - title: "Traverse inbound relationships"
+              query: "SELECT * FROM person<-knows;"
+            - title: "Traverse specific inbound relationship"
+              query: "SELECT * FROM person<-knows<-person;"
+
+      - type: Operator
+        name: '<->'
+        spec:
+          operator_type: binary
+          precedence: 9
+          category: 'traversal'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'DELETE'
+            - 'UPDATE'
+          summary: "Bidirectional edge traversal."
+          documentation:
+            description: "Traverses relationships in both directions from the operand. Finds all connected nodes regardless of edge direction."
+          signature: "(record, string) -> array"
+          operands: { left: record, right: string }
+          result_type: array
+          indexed: true
+          examples:
+            - title: "Bidirectional traversal"
+              query: "SELECT * FROM person<->knows;"
+
+  range:
+    description: "Operators for creating ranges and sequences."
+    definitions:
+      - type: Operator
+        name: '..'
+        spec:
+          operator_type: binary
+          precedence: 5
+          category: 'range'
+          contexts:
+            - 'FOR'
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+          summary: "Exclusive range operator."
+          documentation:
+            description: "Creates a range from the left operand (inclusive) to the right operand (exclusive)."
+          signature: "(number, number) -> range"
+          operands: { left: number, right: number }
+          result_type: range
+          indexed: false
+          examples:
+            - title: "Create exclusive range"
+              query: "FOR $i IN 1..5 { RETURN $i; };"
+              output: "[1, 2, 3, 4]"
+
+      - type: Operator
+        name: '..='
+        spec:
+          operator_type: binary
+          precedence: 5
+          category: 'range'
+          contexts:
+            - 'FOR'
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+          summary: "Inclusive range operator."
+          documentation:
+            description: "Creates a range from the left operand (inclusive) to the right operand (inclusive)."
+          signature: "(number, number) -> range"
+          operands: { left: number, right: number }
+          result_type: range
+          indexed: false
+          examples:
+            - title: "Create inclusive range"
+              query: "FOR $i IN 1..=5 { RETURN $i; };"
+              output: "[1, 2, 3, 4, 5]"
+
+  array_access:
+    description: "Operators for accessing array and object elements."
+    definitions:
+      - type: Operator
+        name: '[]'
+        spec:
+          operator_type: binary_postfix
+          precedence: 12
+          category: 'array_access'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Array/object element access."
+          documentation:
+            description: "Accesses elements of arrays by index or objects by key. Supports bracket notation for dynamic access."
+          signature: "(array|object, number|string) -> any"
+          operands: { left: "array|object", right: "number|string" }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "Array element access"
+              query: "RETURN ['a', 'b', 'c'][1];"
+              output: "'b'"
+            - title: "Object property access"
+              query: "RETURN {name: 'John', age: 30}['name'];"
+              output: "'John'"
+
+      - type: Operator
+        name: '.'
+        spec:
+          operator_type: binary_postfix
+          precedence: 12
+          category: 'array_access'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Object property access."
+          documentation:
+            description: "Accesses properties of objects using dot notation. The property name must be a valid identifier."
+          signature: "(object, identifier) -> any"
+          operands: { left: object, right: identifier }
+          result_type: any
+          indexed: true
+          examples:
+            - title: "Object property access"
+              query: "RETURN {name: 'John', age: 30}.name;"
+              output: "'John'"
+
+  conditional:
+    description: "Operators for conditional expressions."
+    definitions:
+      - type: Operator
+        name: '?'
+        spec:
+          operator_type: ternary
+          precedence: 0
+          category: 'conditional'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Ternary conditional operator."
+          documentation:
+            description: "Evaluates the first operand as a condition. If true, returns the second operand; if false, returns the third operand. Syntax: condition ? true_value : false_value"
+          signature: "(bool, any, any) -> any"
+          operands: { condition: bool, true_value: any, false_value: any }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "Simple ternary operation"
+              query: "RETURN 5 > 3 ? 'yes' : 'no';"
+              output: "'yes'"
+
+  temporal:
+    description: "Operators for date and time calculations."
+    definitions:
+      - type: Operator
+        name: '+∂'
+        spec:
+          operator_type: binary
+          precedence: 6
+          category: 'temporal'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Adds a duration to a datetime."
+          documentation:
+            description: "Adds a duration (right operand) to a datetime value (left operand)."
+          signature: "(datetime, duration) -> datetime"
+          operands: { left: datetime, right: duration }
+          result_type: datetime
+          indexed: false
+          examples:
+            - title: "Add duration to datetime"
+              query: "RETURN d'2023-01-01T00:00:00Z' +∂ 1d;"
+              output: "d'2023-01-02T00:00:00Z'"
+
+      - type: Operator
+        name: '-∂'
+        spec:
+          operator_type: binary
+          precedence: 6
+          category: 'temporal'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'WHERE'
+            - 'HAVING'
+          summary: "Subtracts a duration from a datetime."
+          documentation:
+            description: "Subtracts a duration (right operand) from a datetime value (left operand)."
+          signature: "(datetime, duration) -> datetime"
+          operands: { left: datetime, right: duration }
+          result_type: datetime
+          indexed: false
+          examples:
+            - title: "Subtract duration from datetime"
+              query: "RETURN d'2023-01-02T00:00:00Z' -∂ 1d;"
+              output: "d'2023-01-01T00:00:00Z'"
+
+  destructuring:
+    description: "Operators for destructuring and pattern matching."
+    definitions:
+      - type: Operator
+        name: '...'
+        spec:
+          operator_type: unary_prefix
+          precedence: 11
+          category: 'destructuring'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+            - 'CREATE'
+            - 'UPDATE'
+          summary: "Spread operator for destructuring."
+          documentation:
+            description: "Spreads the elements of an array or properties of an object. Used in destructuring assignments and function calls."
+          signature: "(array|object) -> elements"
+          operands: { operand: "array|object" }
+          result_type: elements
+          indexed: false
+          examples:
+            - title: "Spread array elements"
+              query: "LET $arr = [1, 2, 3]; RETURN [...$arr, 4, 5];"
+              output: "[1, 2, 3, 4, 5]"
+            - title: "Spread object properties"
+              query: "LET $obj = {a: 1, b: 2}; RETURN {...$obj, c: 3};"
+              output: "{a: 1, b: 2, c: 3}"
+
+  pipeline:
+    description: "Operators for data pipeline and transformation."
+    definitions:
+      - type: Operator
+        name: '|>'
+        spec:
+          operator_type: binary
+          precedence: 1
+          category: 'pipeline'
+          contexts:
+            - 'SELECT'
+            - 'RETURN'
+            - 'LET'
+          summary: "Pipeline operator for chaining transformations."
+          documentation:
+            description: "Passes the result of the left operand as input to the right operand function. Enables functional-style data transformation chains."
+          signature: "(any, function) -> any"
+          operands: { left: any, right: function }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "Chain transformations"
+              query: "RETURN [1, 2, 3] |> math::sum |> string::uppercase;"
+
+  special:
+    description: "Special operators with unique behaviours."
+    definitions:
+      - type: Operator
+        name: '::'
+        spec:
+          operator_type: binary
+          precedence: 12
+          category: 'special'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Namespace/function call operator."
+          documentation:
+            description: "Used to access namespaced functions and methods. The left operand is the namespace, and the right operand is the function name."
+          signature: "(namespace, identifier) -> function"
+          operands: { left: namespace, right: identifier }
+          result_type: function
+          indexed: false
+          examples:
+            - title: "Call namespaced function"
+              query: "RETURN math::floor(3.7);"
+              output: 3
+            - title: "String function"
+              query: "RETURN string::uppercase('hello');"
+              output: "'HELLO'"
+
+      - type: Operator
+        name: '=>'
+        spec:
+          operator_type: binary
+          precedence: 0
+          category: 'special'
+          contexts:
+            - 'LET'
+            - 'SELECT'
+            - 'RETURN'
+          summary: "Arrow function definition."
+          documentation:
+            description: "Defines anonymous functions (closures). The left operand contains the parameters, and the right operand is the function body."
+          signature: "(parameters, expression) -> function"
+          operands: { left: parameters, right: expression }
+          result_type: function
+          indexed: false
+          examples:
+            - title: "Define arrow function"
+              query: "LET $add = |$a, $b| => $a + $b; RETURN $add(2, 3);"
+              output: 5
+
+      - type: Operator
+        name: '$'
+        spec:
+          operator_type: unary_prefix
+          precedence: 12
+          category: 'special'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+            - 'FOR'
+            - 'IF'
+          summary: "Variable reference operator."
+          documentation:
+            description: "References a variable or parameter. Variables must be declared with LET or defined as function parameters."
+          signature: "(identifier) -> any"
+          operands: { operand: identifier }
+          result_type: any
+          indexed: false
+          examples:
+            - title: "Variable reference"
+              query: "LET $name = 'John'; RETURN $name;"
+              output: "'John'"
+
+      - type: Operator
+        name: '@'
+        spec:
+          operator_type: unary_prefix
+          precedence: 12
+          category: 'special'
+          contexts:
+            - 'SELECT'
+            - 'WHERE'
+            - 'HAVING'
+            - 'RETURN'
+            - 'LET'
+            - 'UPDATE'
+            - 'CREATE'
+          summary: "Record context operator."
+          documentation:
+            description: "References the current record being processed in a query context. Useful for self-referential operations."
+          signature: "() -> record"
+          operands: {}
+          result_type: record
+          indexed: false
+          examples:
+            - title: "Reference current record"
+              query: "SELECT *, @.id AS record_id FROM person;"

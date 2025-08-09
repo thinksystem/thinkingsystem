@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[system]
+name = "Flow Orchestrator - Flows and Blocks Demo"
+description = "Demonstrates flows and blocks orchestration with LLM-powered blocks"
+version = "1.0.0"
+
+[engine]
+type = "UnifiedFlowEngine"
+backend = "Ollama (Local)"
+architecture = "Proper BlockBehaviour implementation"
+
+[llm]
+model = "gemma3:1b"
+context_size = 8192
+temperature = 0.1
+
+[generation]
+max_iterations = 3
+validation_enabled = true
+fallback_enabled = true
+
+[demo]
+default_task = "Process and analyse user workflow patterns"
+default_iterations = 0

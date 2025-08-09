@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: from
+spec:
+  syntax: "@query FROM [ONLY] <targets...>"
+  summary: "Specifies the table, view, or other targets to query."
+  variants:
+    - name: "Multiple Tables"
+      summary: "Query data from multiple tables in a single statement."
+      queries:
+        - query: "SELECT * FROM user, admin;"
+    - name: "Table from Variable"
+      summary: "Dynamically specify the target table using a variable."
+      setup:
+        - "LET $table = \"user\";"
+      queries:
+        - query: "SELECT * FROM type::table($table) WHERE admin = true;"
+    - name: "Record from Variables"
+      summary: "Dynamically specify a single record using variables for the table and ID."
+      setup:
+        - 'LET $table = "user";'
+        - 'LET $id = "admin";'
+      queries:
+        - query: "SELECT * FROM type::thing($table, $id);"
+    - name: "Specific Records"
+      summary: "Query a specific list of records from one or more tables."
+      queries:
+        - query: "SELECT * FROM user:tobie, user:jaime, company:surrealdb;"
+    - name: "List of Identifiers"
+      summary: "Query records using a list of identifiers."
+      queries:
+        - query: "SELECT * FROM [3648937, \"test\", person:lrym5gur8hzws72ux5fa, person:4luro9170uwcv1xrfvby];"
+    - name: "Object Literal"
+      summary: "Select data directly from an object literal."
+      queries:
+        - query: "SELECT * FROM { person: person:lrym5gur8hzws72ux5fa, embedded: true };"
+    - name: "Subquery"
+      summary: "Use the result of a subquery as the data source."
+      queries:
+        - query: "SELECT * FROM (SELECT age >= 18 AS adult FROM user) WHERE adult = true;"
+    - name: "With ONLY Keyword"
+      summary: "Restrict the query to retrieve data only from the specified targets."
+      queries:
+        - query: "SELECT * FROM ONLY user:one;"
+        - query: "SELECT * FROM ONLY user LIMIT 10;"

@@ -1,0 +1,232 @@
+use stele::nlu::query_processor::security::{SecurityConfig, get_compiled_regex};
+use percent_encoding::percent_decode_str;
+
+fn setup_real_config() {
+    std::env::set_var("SECURITY_CONFIG_PATH", "src/nlu/config/security.yml");
+}
+
+#[test]
+fn test_security_config_load() {
+    setup_real_config();
+    let config = SecurityConfig::load();
+    assert!(config.is_ok());
+}
+
+#[test]
+fn test_security_config_validation() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    assert!(config.validate().is_ok());
+}
+
+#[test]
+fn test_dangerous_pattern_regex() {
+    setup_real_config();
+    let regex = get_compiled_regex(r"javascript:").unwrap();
+    assert!(regex.is_match("javascript:alert(1)"));
+    assert!(!regex.is_match("normal text"));
+}
+
+#[test]
+fn test_path_traversal_pattern() {
+    setup_real_config();
+    let regex = get_compiled_regex(r"\.\.\/|\.\.\\").unwrap();
+    assert!(regex.is_match("../etc/passwd"));
+    assert!(regex.is_match("..\\windows\\system32"));
+    assert!(!regex.is_match("normal/path"));
+}
+
+#[test]
+fn test_unicode_normalisation() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    let input = "café";
+    let mut result = input.to_string();
+    if config.encoding_security.normalise_unicode {
+        use unicode_normalisation::UnicodeNormalisation;
+        result = result.nfc().collect::<String>();
+    }
+    assert!(!result.is_empty());
+}
+
+#[test]
+fn test_percent_encoding_decode() {
+    let encoded = "hello%20world";
+    let decoded = percent_decode_str(encoded)
+        .decode_utf8()
+        .unwrap()
+        .into_owned();
+    assert_eq!(decoded, "hello world");
+}
+
+#[test]
+fn test_real_config_values() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    assert_eq!(config.limits.input_max_length, 10000);
+    assert_eq!(config.limits.sql_max_length, 5000);
+    assert_eq!(config.limits.config_value_max_length, 1000);
+    assert_eq!(config.limits.log_truncate_length, 100);
+}
+
+#[test]
+fn test_real_blocked_extensions() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    assert!(config.path_security.blocked_extensions.contains(&"exe".to_string()));
+    assert!(config.path_security.blocked_extensions.contains(&"bat".to_string()));
+    assert!(config.path_security.blocked_extensions.contains(&"cmd".to_string()));
+    assert!(config.path_security.blocked_extensions.contains(&"sh".to_string()));
+    assert!(config.path_security.blocked_extensions.contains(&"ps1".to_string()));
+    assert!(config.path_security.blocked_extensions.contains(&"dll".to_string()));
+    assert!(config.path_security.blocked_extensions.contains(&"so".to_string()));
+}
+
+#[test]
+fn test_real_blocked_functions() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    assert!(config.sql_security.blocked_functions.contains(&"load_file".to_string()));
+    assert!(config.sql_security.blocked_functions.contains(&"into_outfile".to_string()));
+    assert!(config.sql_security.blocked_functions.contains(&"copy".to_string()));
+    assert!(config.sql_security.blocked_functions.contains(&"bulk_insert".to_string()));
+    assert!(config.sql_security.blocked_functions.contains(&"xp_cmdshell".to_string()));
+    assert!(config.sql_security.blocked_functions.contains(&"eval".to_string()));
+}
+
+#[test]
+fn test_real_blocked_schemas() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    assert!(config.sql_security.blocked_schemas.contains(&"information_schema".to_string()));
+    assert!(config.sql_security.blocked_schemas.contains(&"mysql".to_string()));
+    assert!(config.sql_security.blocked_schemas.contains(&"sys".to_string()));
+    assert!(config.sql_security.blocked_schemas.contains(&"performance_schema".to_string()));
+    assert!(config.sql_security.blocked_schemas.contains(&"pg_catalogue".to_string()));
+    assert!(config.sql_security.blocked_schemas.contains(&"master".to_string()));
+    assert!(config.sql_security.blocked_schemas.contains(&"msdb".to_string()));
+}
+
+#[test]
+fn test_real_allowed_statement_types() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    assert!(config.sql_security.allowed_statement_types.contains(&"Query".to_string()));
+    assert_eq!(config.sql_security.allowed_statement_types.len(), 1);
+}
+
+#[test]
+fn test_real_dangerous_patterns() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    let patterns = &config.input_security.dangerous_patterns;
+    assert!(patterns.iter().any(|p| p.contains("javascript:")));
+    assert!(patterns.iter().any(|p| p.contains("<script")));
+    assert!(patterns.iter().any(|p| p.contains("\\x00")));
+    assert!(patterns.iter().any(|p| p.contains("\\.\\.")));
+}
+
+#[test]
+fn test_real_encoding_security() {
+    setup_real_config();
+    let config = SecurityConfig::load().unwrap();
+    assert!(config.encoding_security.normalise_unicode);
+    assert!(config.encoding_security.reject_null_bytes);
+    assert_eq!(config.encoding_security.max_encoding_layers, 2);
+}
+
+#[test]
+fn test_regex_cache() {
+    setup_real_config();
+    let pattern = r"test\d+";
+    let regex1 = get_compiled_regex(pattern).unwrap();
+    let regex2 = get_compiled_regex(pattern).unwrap();
+    assert!(regex1.is_match("test123"));
+    assert!(regex2.is_match("test456"));
+    assert!(!regex1.is_match("test"));
+}
+
+#[test]
+fn test_config_validation_logic() {
+    use stele::nlu::query_processor::security::{
+        LimitsConfig, PathSecurityConfig, SqlSecurityConfig,
+        InputSecurityConfig, EncodingSecurityConfig
+    };
+
+    let invalid_config = SecurityConfig {
+        limits: LimitsConfig {
+            input_max_length: 0, // invalid
+            sql_max_length: 200000, // too large
+            config_value_max_length: 50,
+            log_truncate_length: 20,
+        },
+        path_security: PathSecurityConfig {
+            blocked_extensions: vec![],
+        },
+        sql_security: SqlSecurityConfig {
+            allowed_statement_types: vec![],
+            blocked_statement_types: vec![],
+            allowed_expression_types: vec![],
+            blocked_functions: vec![],
+            blocked_schemas: vec![],
+        },
+        input_security: InputSecurityConfig {
+            dangerous_patterns: vec![],
+        },
+        encoding_security: EncodingSecurityConfig {
+            normalise_unicode: true,
+            reject_null_bytes: true,
+            max_encoding_layers: 15, // too high
+        },
+    };
+    let result = invalid_config.validate();
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_config_path_security_validation() {
+    std::env::set_var("SECURITY_CONFIG_PATH", "/absolute/path/config.yml");
+    let result = SecurityConfig::load();
+    assert!(result.is_err());
+
+    std::env::set_var("SECURITY_CONFIG_PATH", "../config.yml");
+    let result = SecurityConfig::load();
+    assert!(result.is_err());
+}
+
+#[test]
+fn test_invalid_regex_pattern_validation() {
+    use stele::nlu::query_processor::security::{
+        LimitsConfig, PathSecurityConfig, SqlSecurityConfig,
+        InputSecurityConfig, EncodingSecurityConfig
+    };
+
+    let config_with_invalid_regex = SecurityConfig {
+        limits: LimitsConfig {
+            input_max_length: 1000,
+            sql_max_length: 5000,
+            config_value_max_length: 500,
+            log_truncate_length: 100,
+        },
+        path_security: PathSecurityConfig {
+            blocked_extensions: vec![],
+        },
+        sql_security: SqlSecurityConfig {
+            allowed_statement_types: vec!["Query".to_string()],
+            blocked_statement_types: vec![],
+            allowed_expression_types: vec![],
+            blocked_functions: vec![],
+            blocked_schemas: vec![],
+        },
+        input_security: InputSecurityConfig {
+            dangerous_patterns: vec!["[invalid regex(".to_string()], // invalid regex
+        },
+        encoding_security: EncodingSecurityConfig {
+            normalise_unicode: true,
+            reject_null_bytes: true,
+            max_encoding_layers: 2,
+        },
+    };
+    let result = config_with_invalid_regex.validate();
+    assert!(result.is_err());
+}

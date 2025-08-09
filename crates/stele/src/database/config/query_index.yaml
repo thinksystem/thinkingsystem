@@ -1,0 +1,74 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+transaction_templates:
+  content_node: |
+    LET $content_id = (CREATE content_nodes:⟨ulid()⟩ SET 
+      raw_text = $raw_text,
+      node_type = 'content',
+      sentiment = $sentiment,
+      topics = $topics,
+      timestamp = time::now()
+      RETURN id);
+
+  token_node: |
+    LET $token_var = (CREATE token_nodes:⟨ulid()⟩ SET 
+      category = $category,
+      value = $value,
+      confidence = $confidence,
+      metadata = $metadata,
+      subcategories = $subcategories,
+      timestamp = time::now()
+      RETURN id);
+
+  embedding_node: |
+    LET $embedding_id = (CREATE embedding_nodes:⟨ulid()⟩ SET 
+      vector = vector::encode($content),
+      timestamp = time::now()
+      RETURN id);
+
+  pipeline_node: |
+    LET $pipeline_var = (CREATE pipeline_nodes:⟨ulid()⟩ SET 
+      step = $step_name,
+      results = $results,
+      timestamp = time::now()
+      RETURN id);
+
+  semantic_node: |
+    LET $semantic_id = (CREATE semantic_nodes:⟨ulid()⟩ SET 
+      extracted_data = $extracted_data,
+      timestamp = time::now()
+      RETURN id);
+
+  temporal_node: |
+    LET $temporal_id = (CREATE temporal_nodes:⟨ulid()⟩ SET 
+      context = $context,
+      timestamp = time::now()
+      RETURN id);
+
+relationships:
+  content_token: |
+    RELATE $content_id->has_token->$token_var SET 
+      confidence = $confidence,
+      category = $category,
+      timestamp = time::now();
+
+  content_embedding: |
+    RELATE $content_id->has_embedding->$embedding_id SET 
+      type = 'vector_embedding',
+      timestamp = time::now();
+
+  content_processing: |
+    RELATE $content_id->has_processing->$pipeline_var SET 
+      type = 'pipeline_step',
+      step_name = $step_name,
+      timestamp = time::now();
+
+  content_semantic: |
+    RELATE $content_id->has_semantic->$semantic_id SET 
+      type = 'semantic_extraction',
+      timestamp = time::now();
+
+  content_temporal: |
+    RELATE $content_id->has_temporal->$temporal_id SET 
+      type = 'temporal_context',
+      timestamp = time::now();

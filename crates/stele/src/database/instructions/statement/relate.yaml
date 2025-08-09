@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: relate
+spec:
+  syntax: "RELATE [ ONLY ] @from_record -> @table -> @to_record [ CONTENT @value | SET @field = @value ... ] [ RETURN ... ] [ TIMEOUT ... ] [ PARALLEL ];"
+  summary: "Creates directed graph edges between two records, enabling efficient traversal of related data."
+  variants:
+    - name: "Default Relation"
+      summary: "Creates a directed edge from one record to another, forming a new edge table."
+      syntax: "RELATE [ ONLY ] @from_record -> @table -> @to_record"
+      examples:
+        - setup:
+            - "CREATE person:aristotle, article:on_sleep;"
+          query: "RELATE person:aristotle->wrote->article:on_sleep;"
+        - setup:
+            - "CREATE cat:mr_meow, cat:mrs_meow, cat:kitten1, cat:kitten2;"
+          query: "RELATE [cat:mr_meow, cat:mrs_meow]->parent_of->[cat:kitten1, cat:kitten2];"
+        - setup:
+            - "CREATE person:tobie, article:surrealdb;"
+          query: "RELATE ONLY person:tobie->wrote->article:surrealdb;"
+    - name: "Adding Data (CONTENT | SET)"
+      summary: "Adds data to the relationship record using `CONTENT` to replace the entire content or `SET` to modify specific fields."
+      syntax: "RELATE ... [ CONTENT @value | SET @field = @value ... ]"
+      examples:
+        - setup:
+            - "CREATE person:tobie, article:surrealdb;"
+          query: |
+            RELATE person:tobie->wrote->article:surrealdb
+                SET time_written = time::now(), location = "London";
+        - setup:
+            - "CREATE person:tobie, article:surrealdb;"
+          query: |
+            RELATE person:tobie->wrote->article:surrealdb
+            	CONTENT {
+            		time_written: time::now(),
+            		location: "London"
+            	};
+    - name: "Returning Data (RETURN)"
+      summary: "Specifies what data the statement should return after the relation is created. The default is `AFTER`."
+      syntax: "RELATE ... [ RETURN NONE | BEFORE | AFTER | DIFF | @fields ... ]"
+      examples:
+        - setup:
+            - "CREATE person:tobie, article:surrealdb;"
+          query: "RELATE person:tobie->wrote->article:surrealdb RETURN id, in, out;"
+        - setup:
+            - "CREATE person:tobie, article:surrealdb;"
+          query: "RELATE person:tobie->wrote->article:surrealdb RETURN NONE;"
+  features:
+    - name: "Timeout"
+      summary: "Sets a maximum execution time for the statement."
+    - name: "Parallel Execution"
+      summary: "Executes parts of the query concurrently."

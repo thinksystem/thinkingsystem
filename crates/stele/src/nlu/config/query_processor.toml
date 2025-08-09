@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[query_processor]
+name = "default"
+version = "1.0"
+
+[database]
+timeout_seconds = 30
+max_connections = 10
+
+[security]
+enable_validation = true
+max_query_length = 10000

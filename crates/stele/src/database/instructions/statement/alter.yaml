@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: alter
+spec:
+  syntax: "ALTER TABLE [ IF EXISTS ] @name [ DROP ] [ SCHEMAFULL | SCHEMALESS ] [ PERMISSIONS [ NONE | FULL | FOR select @expression | FOR create @expression | FOR update @expression | FOR delete @expression ] ] [ COMMENT @string ];"
+  summary: "Changes the definitions for defined resources, currently supporting tables."
+  variants:
+    - name: "Set Schema Mode"
+      summary: "Change a table to be either SCHEMAFULL or SCHEMALESS."
+      syntax: "ALTER TABLE [ IF EXISTS ] @name SCHEMAFULL | SCHEMALESS;"
+      examples:
+        - setup:
+            - "DEFINE TABLE user SCHEMALESS;"
+            - "DEFINE FIELD name ON TABLE user TYPE string;"
+            - "CREATE user SET name = \"LordofSalty\";"
+          query: "ALTER TABLE user SCHEMAFULL;"
+        - query: "ALTER TABLE IF EXISTS user SCHEMAFULL;"
+    - name: "Set Permissions"
+      summary: "Change a table's permissions for select, create, update, or delete actions."
+      syntax: "ALTER TABLE [ IF EXISTS ] @name PERMISSIONS [ NONE | FULL | FOR select @expression | FOR create @expression | FOR update @expression | FOR delete @expression ];"
+      examples:
+        - setup:
+            - "DEFINE TABLE user SCHEMAFULL;"
+          query: "ALTER TABLE user PERMISSIONS FOR create FULL;"
+    - name: "Set Table Comment"
+      summary: "Adds or updates a comment on a table."
+      syntax: "ALTER TABLE [ IF EXISTS ] @name COMMENT @string;"
+      examples:
+        - setup:
+            - "DEFINE TABLE user SCHEMAFULL;"
+          query: "ALTER TABLE user COMMENT 'Stores information about application users';"
+    - name: "Removing Properties"
+      summary: "Removes properties like permissions or comments from a table by setting them to a default or empty state."
+      syntax: "ALTER TABLE @name PERMISSIONS NONE; | ALTER TABLE @name COMMENT '';"
+      examples:
+        - setup:
+            - "DEFINE TABLE user SCHEMAFULL PERMISSIONS FULL;"
+          query: "ALTER TABLE user PERMISSIONS NONE;"
+        - setup:
+            - "DEFINE TABLE user SCHEMAFULL COMMENT 'Initial comment';"
+          query: "ALTER TABLE user COMMENT '';"

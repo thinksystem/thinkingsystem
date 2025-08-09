@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: <clause_name>
+spec:
+  syntax: "@query <CLAUSE_KEYWORD> <...>"
+  summary: "A brief description of how this clause modifies a query."
+  variants:
+    - name: "Variant Name"
+      summary: "A one-line summary of this specific variant of the clause."
+      setup:
+        - "CREATE ..."
+      queries:
+        - query: "SELECT ... <CLAUSE_KEYWORD> ..."

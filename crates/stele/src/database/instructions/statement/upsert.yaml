@@ -1,0 +1,111 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Statement
+name: upsert
+spec:
+  syntax: |
+    UPSERT [ ONLY ] @targets
+    	[ CONTENT @value
+    	  | MERGE @value
+    	  | PATCH @value
+    	  | REPLACE @value
+    	  | [ SET @field = @value, ... | UNSET @field, ... ]
+    	]
+    	[ WHERE @condition ]
+    	[ RETURN NONE | BEFORE | AFTER | DIFF | @fields ... | VALUE @field ]
+    	[ TIMEOUT @duration ]
+    	[ PARALLEL ]
+    	[ EXPLAIN [ FULL ] ]
+    ;
+  summary: "Creates a record, or updates it if it already exists, functioning as an 'INSERT, otherwise UPDATE' operation."
+  variants:
+    - name: "Using SET / UNSET"
+      summary: "Modifies specific fields. SET adds or changes field values, while UNSET removes them."
+      syntax: "UPSERT @targets SET @field = @value, ... [ WHERE @condition ];"
+      examples:
+        - setup:
+            - "CREATE person SET name = 'Jaime';"
+          query: "UPSERT person SET name = 'Tobie' WHERE name = 'Jaime';"
+        - query: |
+            -- This creates the record because person:test does not exist.
+            UPSERT person:test SET name = 'Jaime' WHERE name = 'Jaime';
+            
+            -- This updates the record because it exists and the WHERE clause matches.
+            UPSERT person:test SET name = 'Tobie' WHERE name = 'Jaime';
+            
+            -- This does nothing, because the record exists but the WHERE clause does not match.
+            UPSERT person:test SET name = 'Billy' WHERE name = 'Jaime';
+        - query: 'UPSERT event_for:[time::now().format("%Y-%m-%d")] SET number += 1;'
+    - name: "Using CONTENT"
+      summary: "Replaces the entire content of a record with a new object, bypassing READONLY fields."
+      syntax: "UPSERT @targets CONTENT @value;"
+      examples:
+        - query: |
+            UPSERT person:tobie CONTENT {
+            	name: 'Tobie',
+            	company: 'SurrealDB',
+            	skills: ['Rust', 'Go', 'JavaScript'],
+            };
+    - name: "Using MERGE"
+      summary: "Deeply merges a given object into a record."
+      syntax: "UPSERT @targets MERGE @value;"
+      examples:
+        - query: |
+            UPSERT person:tobie MERGE {
+            	settings: {
+            		marketing: true,
+            	},
+            };
+    - name: "Using PATCH"
+      summary: "Applies JSON Patch operations to a record."
+      syntax: "UPSERT @targets PATCH @value;"
+      examples:
+        - setup:
+            - "UPSERT person:tobie CONTENT { name: 'Tobie', skills: ['Rust'] };"
+          query: |
+            UPSERT person:tobie PATCH [
+            	{ "op": "add", "path": "/skills/-", "value": "Go" }
+            ];
+    - name: "Using REPLACE"
+      summary: "Replaces a record's content, but enforces READONLY field constraints."
+      syntax: "UPSERT @targets REPLACE @value;"
+      examples:
+        - setup:
+            - "DEFINE TABLE person SCHEMAFULL; DEFINE FIELD created_at ON person TYPE datetime VALUE time::now() READONLY;"
+            - "CREATE person:tobie;"
+          query: |
+            UPSERT person:tobie REPLACE {
+                name: 'Tobie',
+                created_at: time::now()
+            };
+  features:
+    - name: "WHERE Clause"
+      summary: "The WHERE clause is critical for the update logic of an UPSERT. If a record matching the WHERE clause is found, it is updated. If no record matches, a new one is created."
+      syntax: "... WHERE @condition"
+    - name: "RETURN Clause"
+      summary: "Controls what data is returned by the statement."
+      syntax: "... RETURN NONE | BEFORE | AFTER | DIFF | @fields ... | VALUE @field"
+    - name: "TIMEOUT Clause"
+      summary: "Sets a maximum execution time for the statement."
+      syntax: "... TIMEOUT @duration"
+    - name: "PARALLEL Clause"
+      summary: "Executes parts of the query concurrently."
+      syntax: "... PARALLEL"
+    - name: "EXPLAIN Clause"
+      summary: "Returns the query's execution plan instead of performing the upsert."
+      syntax: "... EXPLAIN [ FULL ]"
+    - name: "ONLY Modifier"
+      summary: "Ensures the statement returns a single object directly, rather than an array containing one object."
+      syntax: "UPSERT ONLY @target ..."
+    - name: "Performance with UNIQUE Index"
+      summary: "Using a UNIQUE index on fields in the WHERE clause dramatically improves performance by avoiding table scans."
+      examples:
+        - setup:
+            - "DEFINE INDEX unique_key ON TABLE user FIELDS name, class UNIQUE;"
+            - "FOR $i IN 0..50000 { CREATE user SET name = <string>$i, class = <string>$i; };"
+            - "CREATE user SET name = \"Billy\", class = \"wizard\";"
+          query: |
+            UPSERT user SET
+            	name = "Billy",
+            	class = "wizard",
+            	interests += "travel";

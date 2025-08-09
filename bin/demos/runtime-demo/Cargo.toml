@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "runtime-demo"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "runtime-demo"
+path = "src/main.rs"
+
+[dependencies]
+sleet = { path = "../../../crates/sleet" }
+stele = { path = "../../../crates/stele" }
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+futures.workspace = true
+rand.workspace = true
+fxhash = "0.2"

@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+type: Clause
+name: split
+spec:
+  syntax: "@query SPLIT <field...>"
+  summary: "Splits query results based on an array field, creating a new row for each element."
+  variants:
+    - name: "Splitting a Simple Array"
+      summary: "Demonstrates splitting a record with an array field into multiple records, one for each element in the array."
+      setup:
+        - |
+          CREATE user SET
+              name = "John Doe",
+              emails = ["john@example.com", "doe@example.com"];
+      queries:
+        - query: "SELECT * FROM user SPLIT emails;"
+    - name: "Restructuring Collected Graph Paths"
+      summary: "A practical use case showing how SPLIT can return every possible combination of relations inside multiple graph paths."
+      setup:
+        - "CREATE country:canada;"
+        - "CREATE province:bc, province:alberta;"
+        - "CREATE city:vancouver, city:victoria, city:edmonton, city:calgary;"
+        - "RELATE [city:vancouver, city:victoria]->in->province:bc;"
+        - "RELATE [city:edmonton, city:calgary]->in->province:alberta;"
+        - "RELATE [province:bc, province:alberta]->in->country:canada;"
+      queries:
+        - query: |
+            SELECT
+                id AS country,
+                <-in<-province AS provinces,
+                <-in<-province<-in<-city AS cities
+            FROM ONLY country:canada;
+        - query: |
+            SELECT
+                id AS country,
+                <-in<-province AS province,
+                <-in<-province<-in<-city AS city
+            FROM country:canada
+                SPLIT city, province;
+        - query: |
+            (SELECT
+                id,
+                <-in<-province AS province,
+                <-in<-province<-in<-city AS city
+            FROM country:canada
+                SPLIT city, province)
+            .map(|$obj|
+                 <string>$obj.id.id()
+                 + '|'
+                 + <string>$obj.province.id()
+                 + '|'
+                 + <string>$obj.city.id()
+            );
