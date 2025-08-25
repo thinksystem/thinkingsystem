@@ -11,7 +11,7 @@ name = "orchestration-demo"
 path = "src/main.rs"
 
 [dependencies]
-sleet = { path = "../../../crates/sleet" }
+sleet = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

@@ -77,6 +77,28 @@ impl CryptoKeyPair {
         self.verifying_key.as_bytes().to_vec()
     }
 
+    pub fn from_ed25519_secret_bytes(bytes: &[u8]) -> Result<Self, CryptoError> {
+        if bytes.len() != 32 {
+            return Err(CryptoError::InvalidEncoding);
+        }
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(bytes);
+        let signing_key = SigningKey::from_bytes(&arr);
+        let verifying_key = signing_key.verifying_key();
+        Ok(Self {
+            signing_key,
+            verifying_key,
+            algorithm: SignatureAlgorithm::Ed25519,
+        })
+    }
+
+    pub fn from_ed25519_secret_base64(b64: &str) -> Result<Self, CryptoError> {
+        let bytes = general_purpose::STANDARD
+            .decode(b64)
+            .map_err(|_| CryptoError::InvalidEncoding)?;
+        Self::from_ed25519_secret_bytes(&bytes)
+    }
+
     pub fn public_key_hex(&self) -> String {
         hex::encode(self.public_key_bytes())
     }

@@ -146,13 +146,24 @@ impl DatabaseConnection {
     }
     async fn connect(&mut self) -> Result<(), DatabaseError> {
         dotenv().ok();
-        let host = env::var("SURREALDB_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-        let port = env::var("SURREALDB_PORT").unwrap_or_else(|_| "8000".to_string());
-        let user = env::var("SURREALDB_USER").expect("SURREALDB_USER must be set");
-        let pass = env::var("SURREALDB_PASS").expect("SURREALDB_PASS must be set");
-        let ns = env::var("SURREALDB_NS").expect("SURREALDB_NS must be set");
-        let db_name = env::var("SURREALDB_DB").expect("SURREALDB_DB must be set");
-        let endpoint = format!("{host}:{port}");
+        let endpoint = if let Ok(url) = env::var("SURREALDB_URL") {
+            url.strip_prefix("ws://").unwrap_or(&url).to_string()
+        } else {
+            let host = env::var("SURREALDB_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+            let port = env::var("SURREALDB_PORT").unwrap_or_else(|_| "8000".to_string());
+            format!("{host}:{port}")
+        };
+        let required = |key: &str| -> Result<String, DatabaseError> {
+            env::var(key).map_err(|_| {
+                DatabaseError::ConnectionFailed(format!(
+                    "Missing required environment variable {key}"
+                ))
+            })
+        };
+        let user = required("SURREALDB_USER")?;
+        let pass = required("SURREALDB_PASS")?;
+        let ns = required("SURREALDB_NS")?;
+        let db_name = required("SURREALDB_DB")?;
         println!("Attempting to connect to database at ws://{endpoint}");
         let db = Surreal::new::<Ws>(&endpoint).await.map_err(|e| {
             DatabaseError::ConnectionFailed(format!("Failed to create SurrealDB connection: {e}"))
@@ -173,46 +184,73 @@ impl DatabaseConnection {
         Ok(())
     }
     async fn initialise_schema(&self, client: &Surreal<Client>) -> Result<(), DatabaseError> {
-        println!("Initialising database schema from external file...");
+        println!("Initialising dynamic graph schema (dynamic namespace)...");
 
-        let possible_paths = [
-            "src/database/config/database_schema.sql",
-            "crates/stele/src/database/config/database_schema.sql",
-            "../../../crates/stele/src/database/config/database_schema.sql",
-        ];
-
-        let mut schema_content = String::new();
-        let mut found_path = "";
-
-        for path in &possible_paths {
-            match fs::read_to_string(path) {
-                Ok(content) => {
-                    schema_content = content;
-                    found_path = path;
-                    break;
+        
+        
+        let allow_contamination = std::env::var("STELE_ALLOW_CONTAMINATION")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        if !allow_contamination {
+            match client.query("INFO FOR DB;").await {
+                Ok(mut info) => {
+                    let db_info: Option<serde_json::Value> = info.take(0).ok().flatten();
+                    if let Some(serde_json::Value::Object(map)) = db_info {
+                        if let Some(serde_json::Value::Object(tables)) = map.get("tables") {
+                            
+                            
+                            let has_canonical = [
+                                "canonical_entity",
+                                "canonical_event",
+                                "canonical_task",
+                                "canonical_relationship_fact",
+                            ]
+                            .iter()
+                            .any(|t| tables.contains_key(*t));
+                            if has_canonical {
+                                return Err(DatabaseError::ConnectionFailed(
+                                    "Canonical tables detected in dynamic namespace. Refuse to start. Set STELE_ALLOW_CONTAMINATION=1 to override (not recommended)."
+                                        .into(),
+                                ));
+                            }
+                        }
+                    }
                 }
-                Err(_) => continue,
+                Err(e) => {
+                    eprintln!("Warning: Failed to introspect DB for contamination check: {e}");
+                }
             }
         }
 
-        if schema_content.is_empty() {
+        let embedded_schema: &str = include_str!("./config/dynamic_schema.sql");
+        let schema_str = if !embedded_schema.trim().is_empty() {
+            embedded_schema
+        } else {
+            let path = "crates/stele/src/database/config/dynamic_schema.sql";
+            match fs::read_to_string(path) {
+                Ok(s) => {
+                    println!("Loaded schema from {path}");
+                    Box::leak(s.into_boxed_str())
+                }
+                Err(_) => "",
+            }
+        };
+        if schema_str.is_empty() {
             return Err(DatabaseError::ConnectionFailed(
-                "Could not find database schema file in any of the expected locations".to_string(),
+                "Database schema not found or empty".to_string(),
             ));
         }
-
-        println!("Found schema file at: {found_path}");
-        match client.query(&schema_content).await {
+        match client.query(schema_str).await {
             Ok(_) => {
                 println!("Database schema applied successfully.");
             }
             Err(e) => {
                 return Err(DatabaseError::ConnectionFailed(format!(
-                    "Failed to apply schema from {found_path}: {e}"
+                    "Failed to apply schema: {e}"
                 )));
             }
         }
-        println!("Database schema initialisation completed.");
+        println!("Dynamic schema initialisation completed.");
         Ok(())
     }
     pub async fn health_check(&self) -> Result<serde_json::Value, DatabaseError> {

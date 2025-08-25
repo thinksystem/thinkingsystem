@@ -13,7 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal crates
-steel = { path = "../../../crates/steel" }
+steel = { workspace = true }
 
 # External dependencies (using workspace deps where possible)
 tokio.workspace = true

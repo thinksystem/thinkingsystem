@@ -12,6 +12,10 @@
 
 use std::collections::HashMap;
 use std::fmt;
+use crate::database::sanitize::{sanitize_field_expr, sanitize_record_id, sanitize_table_name};
+use tracing::warn;
+
+
 #[derive(Debug, Clone)]
 pub enum DatabaseFunction {
     Array,
@@ -179,6 +183,43 @@ impl Condition {
                 return Err(format!("Potentially dangerous pattern detected: {pattern}"));
             }
         }
+        
+        let allowed = |c: char| {
+            c.is_ascii_alphanumeric()
+                || matches!(
+                    c,
+                    ' ' | '_'
+                        | '.'
+                        | '$'
+                        | '@'
+                        | '['
+                        | ']'
+                        | '{'
+                        | '}'
+                        | '('
+                        | ')'
+                        | '*'
+                        | '\''
+                        | '"'
+                        | ':'
+                        | '-'
+                        | '>'
+                        | '<'
+                        | '|'
+                        | '='
+                        | '!'
+                        | '~'
+                        | '+'
+                        | '/'
+                        | ','
+                )
+        };
+        if !condition.chars().all(allowed) {
+            return Err("Condition contains unsupported characters".to_string());
+        }
+        if condition.len() > 2000 {
+            warn!("Raw condition unusually long: {} chars", condition.len());
+        }
         Ok(Self::Raw(condition.to_string()))
     }
     pub fn traversal(segments: Vec<GraphPathSegment>) -> Self {
@@ -201,41 +242,61 @@ impl fmt::Display for FunctionCall {
 impl fmt::Display for ArrayFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ArrayFunction::Len(arr) => write!(f, "array::len({arr})"),
-            ArrayFunction::First(arr) => write!(f, "array::first({arr})"),
-            ArrayFunction::Last(arr) => write!(f, "array::last({arr})"),
-            ArrayFunction::Sort(arr) => write!(f, "array::sort({arr})"),
-            ArrayFunction::Reverse(arr) => write!(f, "array::reverse({arr})"),
-            ArrayFunction::Flatten(arr) => write!(f, "array::flatten({arr})"),
-            ArrayFunction::Distinct(arr) => write!(f, "array::distinct({arr})"),
-            ArrayFunction::Join(arr, sep) => write!(f, "array::join({arr}, \"{sep}\")"),
+            ArrayFunction::Len(arr) => write!(f, "array::len({})", sanitize_field_expr(arr)),
+            ArrayFunction::First(arr) => write!(f, "array::first({})", sanitize_field_expr(arr)),
+            ArrayFunction::Last(arr) => write!(f, "array::last({})", sanitize_field_expr(arr)),
+            ArrayFunction::Sort(arr) => write!(f, "array::sort({})", sanitize_field_expr(arr)),
+            ArrayFunction::Reverse(arr) => {
+                write!(f, "array::reverse({})", sanitize_field_expr(arr))
+            }
+            ArrayFunction::Flatten(arr) => {
+                write!(f, "array::flatten({})", sanitize_field_expr(arr))
+            }
+            ArrayFunction::Distinct(arr) => {
+                write!(f, "array::distinct({})", sanitize_field_expr(arr))
+            }
+            ArrayFunction::Join(arr, sep) => write!(
+                f,
+                "array::join({}, \"{}\")",
+                sanitize_field_expr(arr),
+                sep.replace('\"', "\\\"")
+            ),
         }
     }
 }
 impl fmt::Display for MathFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MathFunction::Abs(val) => write!(f, "math::abs({val})"),
+            MathFunction::Abs(val) => write!(f, "math::abs({})", sanitize_field_expr(val)),
             MathFunction::Round(val, places) => match places {
-                Some(p) => write!(f, "math::round({val}, {p})"),
-                None => write!(f, "math::round({val})"),
+                Some(p) => write!(f, "math::round({}, {p})", sanitize_field_expr(val)),
+                None => write!(f, "math::round({})", sanitize_field_expr(val)),
             },
-            MathFunction::Floor(val) => write!(f, "math::floor({val})"),
-            MathFunction::Ceil(val) => write!(f, "math::ceil({val})"),
-            MathFunction::Max(val) => write!(f, "math::max({val})"),
-            MathFunction::Min(val) => write!(f, "math::min({val})"),
-            MathFunction::Sum(val) => write!(f, "math::sum({val})"),
+            MathFunction::Floor(val) => write!(f, "math::floor({})", sanitize_field_expr(val)),
+            MathFunction::Ceil(val) => write!(f, "math::ceil({})", sanitize_field_expr(val)),
+            MathFunction::Max(val) => write!(f, "math::max({})", sanitize_field_expr(val)),
+            MathFunction::Min(val) => write!(f, "math::min({})", sanitize_field_expr(val)),
+            MathFunction::Sum(val) => write!(f, "math::sum({})", sanitize_field_expr(val)),
         }
     }
 }
 impl fmt::Display for StringFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            StringFunction::Len(s) => write!(f, "string::len({s})"),
-            StringFunction::Uppercase(s) => write!(f, "string::uppercase({s})"),
-            StringFunction::Lowercase(s) => write!(f, "string::lowercase({s})"),
-            StringFunction::Trim(s) => write!(f, "string::trim({s})"),
-            StringFunction::Split(s, delim) => write!(f, "string::split({s}, \"{delim}\")"),
+            StringFunction::Len(s) => write!(f, "string::len({})", sanitize_field_expr(s)),
+            StringFunction::Uppercase(s) => {
+                write!(f, "string::uppercase({})", sanitize_field_expr(s))
+            }
+            StringFunction::Lowercase(s) => {
+                write!(f, "string::lowercase({})", sanitize_field_expr(s))
+            }
+            StringFunction::Trim(s) => write!(f, "string::trim({})", sanitize_field_expr(s)),
+            StringFunction::Split(s, delim) => write!(
+                f,
+                "string::split({}, \"{}\")",
+                sanitize_field_expr(s),
+                delim.replace('\"', "\\\"")
+            ),
         }
     }
 }
@@ -250,11 +311,17 @@ impl fmt::Display for TimeFunction {
 impl fmt::Display for TypeFunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            TypeFunction::IsArray(val) => write!(f, "type::is::array({val})"),
-            TypeFunction::IsString(val) => write!(f, "type::is::string({val})"),
-            TypeFunction::IsNumber(val) => write!(f, "type::is::number({val})"),
-            TypeFunction::IsBool(val) => write!(f, "type::is::bool({val})"),
-            TypeFunction::IsNull(val) => write!(f, "type::is::null({val})"),
+            TypeFunction::IsArray(val) => {
+                write!(f, "type::is::array({})", sanitize_field_expr(val))
+            }
+            TypeFunction::IsString(val) => {
+                write!(f, "type::is::string({})", sanitize_field_expr(val))
+            }
+            TypeFunction::IsNumber(val) => {
+                write!(f, "type::is::number({})", sanitize_field_expr(val))
+            }
+            TypeFunction::IsBool(val) => write!(f, "type::is::bool({})", sanitize_field_expr(val)),
+            TypeFunction::IsNull(val) => write!(f, "type::is::null({})", sanitize_field_expr(val)),
         }
     }
 }
@@ -277,8 +344,17 @@ impl fmt::Display for VectorFunction {
                     .collect::<Vec<_>>()
                     .join(",");
                 match metric {
-                    Some(m) => write!(f, "vector::similarity({field}, [{vec_str}], \"{m}\")"),
-                    None => write!(f, "vector::similarity({field}, [{vec_str}])"),
+                    Some(m) => write!(
+                        f,
+                        "vector::similarity({}, [{vec_str}], \"{}\")",
+                        sanitize_field_expr(field),
+                        m.replace('\"', "\\\"")
+                    ),
+                    None => write!(
+                        f,
+                        "vector::similarity({}, [{vec_str}])",
+                        sanitize_field_expr(field)
+                    ),
                 }
             }
         }
@@ -294,7 +370,11 @@ impl fmt::Display for Condition {
             } => {
                 let op_str = operator.to_string();
                 let formatted_value = format_value_for_surreal(value);
-                write!(f, "{field} {op_str} {formatted_value}")
+                write!(
+                    f,
+                    "{} {op_str} {formatted_value}",
+                    sanitize_field_expr(field)
+                )
             }
             Condition::Function {
                 function,
@@ -893,20 +973,32 @@ impl fmt::Display for SelectQuery {
         if self.fields.is_empty() {
             query.push('*');
         } else {
-            query.push_str(&self.fields.join(", "));
+            let fields: Vec<String> = self.fields.iter().map(|s| sanitize_field_expr(s)).collect();
+            query.push_str(&fields.join(", "));
         }
         if !self.omit_fields.is_empty() {
             query.push_str(" OMIT ");
-            query.push_str(&self.omit_fields.join(", "));
+            let fields: Vec<String> = self
+                .omit_fields
+                .iter()
+                .map(|s| sanitize_field_expr(s))
+                .collect();
+            query.push_str(&fields.join(", "));
         }
         query.push_str(" FROM ");
         if self.only_clause {
             query.push_str("ONLY ");
         }
-        query.push_str(&self.from_targets.join(", "));
+        let froms: Vec<String> = self
+            .from_targets
+            .iter()
+            .map(|s| sanitize_table_name(s))
+            .collect();
+        query.push_str(&froms.join(", "));
         if let Some(ref indexes) = self.with_indexes {
             query.push_str(" WITH ");
-            query.push_str(&indexes.join(", "));
+            let idxs: Vec<String> = indexes.iter().map(|s| sanitize_field_expr(s)).collect();
+            query.push_str(&idxs.join(", "));
         }
         if self.no_index {
             query.push_str(" NOINDEX");
@@ -917,11 +1009,16 @@ impl fmt::Display for SelectQuery {
         }
         if let Some(ref split) = self.split_on {
             query.push_str(" SPLIT ");
-            query.push_str(split);
+            query.push_str(&sanitize_field_expr(split));
         }
         if !self.group_by.is_empty() {
             query.push_str(" GROUP BY ");
-            query.push_str(&self.group_by.join(", "));
+            let groups: Vec<String> = self
+                .group_by
+                .iter()
+                .map(|s| sanitize_field_expr(s))
+                .collect();
+            query.push_str(&groups.join(", "));
         }
         if self.group_all {
             query.push_str(" GROUP ALL");
@@ -932,7 +1029,7 @@ impl fmt::Display for SelectQuery {
                 .order_by
                 .iter()
                 .map(|clause| {
-                    let mut order_str = clause.field.clone();
+                    let mut order_str = sanitize_field_expr(&clause.field);
                     match clause.direction {
                         OrderDirection::Asc => order_str.push_str(" ASC"),
                         OrderDirection::Desc => order_str.push_str(" DESC"),
@@ -957,7 +1054,12 @@ impl fmt::Display for SelectQuery {
         }
         if !self.fetch_fields.is_empty() {
             query.push_str(" FETCH ");
-            query.push_str(&self.fetch_fields.join(", "));
+            let fetches: Vec<String> = self
+                .fetch_fields
+                .iter()
+                .map(|s| sanitize_field_expr(s))
+                .collect();
+            query.push_str(&fetches.join(", "));
         }
         if let Some(ref timeout) = self.timeout {
             query.push_str(&format!(" TIMEOUT {timeout}"));
@@ -989,7 +1091,9 @@ impl fmt::Display for RelateQuery {
         }
         query.push_str(&format!(
             "{}->{}->{}",
-            self.from_record, self.edge_table, self.to_record
+            sanitize_record_id(&self.from_record),
+            sanitize_table_name(&self.edge_table),
+            sanitize_record_id(&self.to_record)
         ));
         if let Some(content) = &self.content {
             query.push_str(&format!(" CONTENT {content}"));
@@ -1020,7 +1124,7 @@ impl fmt::Display for RelateQuery {
                         serde_json::Value::String(s) => format!("'{}'", s.replace('\'', "\\'")),
                         _ => v.to_string(),
                     };
-                    format!("{k} = {formatted_value}")
+                    format!("{} = {formatted_value}", sanitize_field_expr(k))
                 })
                 .collect();
             query.push_str(&sets.join(", "));
@@ -1032,7 +1136,10 @@ impl fmt::Display for RelateQuery {
                 ReturnType::Before => query.push_str("BEFORE"),
                 ReturnType::After => query.push_str("AFTER"),
                 ReturnType::Diff => query.push_str("DIFF"),
-                ReturnType::Fields(fields) => query.push_str(&fields.join(", ")),
+                ReturnType::Fields(fields) => {
+                    let flds: Vec<String> = fields.iter().map(|s| sanitize_field_expr(s)).collect();
+                    query.push_str(&flds.join(", "))
+                }
             }
         }
         if let Some(timeout) = &self.timeout {
@@ -1055,13 +1162,16 @@ impl fmt::Display for GraphTraversal {
                 PathDirection::Bidirectional => "<->",
             };
             full_path.push_str(direction_str);
-            full_path.push_str(&segment.edge_table);
+            full_path.push_str(&sanitize_table_name(&segment.edge_table));
             if let Some(ref target_table) = segment.target_node_table {
                 full_path.push_str("->");
                 if let Some(ref conditions) = segment.conditions {
-                    full_path.push_str(&format!("({target_table} WHERE {conditions})"));
+                    full_path.push_str(&format!(
+                        "({} WHERE {conditions})",
+                        sanitize_table_name(target_table)
+                    ));
                 } else {
-                    full_path.push_str(target_table);
+                    full_path.push_str(&sanitize_table_name(target_table));
                 }
             }
         }

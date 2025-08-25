@@ -10,10 +10,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::time::Duration;
+
+
 #[derive(Clone, Debug, Default)]
 pub struct PerformanceMetrics {
     pub avg_execution_time: Duration,
@@ -23,78 +26,124 @@ pub struct PerformanceMetrics {
     pub error_count: u64,
     pub success_rate: f64,
 }
-impl PerformanceMetrics {
-    pub fn new() -> Self {
-        Self::default()
+
+
+#[derive(Debug)]
+pub struct FunctionMetrics {
+    total_calls: AtomicU64,
+    error_count: AtomicU64,
+    avg_execution_time_ns: AtomicU64,
+    last_executed_ms: AtomicU64,
+    peak_memory_usage: AtomicUsize,
+}
+
+impl Default for FunctionMetrics {
+    fn default() -> Self {
+        Self {
+            total_calls: AtomicU64::new(0),
+            error_count: AtomicU64::new(0),
+            avg_execution_time_ns: AtomicU64::new(0),
+            last_executed_ms: AtomicU64::new(0),
+            peak_memory_usage: AtomicUsize::new(0),
+        }
     }
-    pub fn record_execution(&mut self, duration: Duration, success: bool) {
-        self.total_calls += 1;
-        self.last_executed = Utc::now();
-        if success {
-            if self.total_calls == 1 {
-                self.avg_execution_time = duration;
-            } else {
-                let alpha = 0.1;
-                let new_avg_nanos = (1.0 - alpha) * self.avg_execution_time.as_nanos() as f64
-                    + alpha * duration.as_nanos() as f64;
-                self.avg_execution_time = Duration::from_nanos(new_avg_nanos as u64);
+}
+
+impl FunctionMetrics {
+    pub fn record_execution(&self, duration: Duration, success: bool) {
+        let calls_before = self.total_calls.fetch_add(1, Ordering::Relaxed);
+        if !success {
+            self.error_count.fetch_add(1, Ordering::Relaxed);
+        } else {
+            
+            let dur_ns = duration.as_nanos() as u64;
+            self.avg_execution_time_ns
+                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
+                    let new_val = if calls_before == 0 || current == 0 {
+                        dur_ns
+                    } else {
+                        
+                        let old_f = current as f64;
+                        let new_f = (1.0 - 0.1) * old_f + 0.1 * dur_ns as f64;
+                        new_f as u64
+                    };
+                    Some(new_val)
+                })
+                .ok();
+        }
+        
+        let now_ms = Utc::now().timestamp_millis() as u64;
+        self.last_executed_ms.store(now_ms, Ordering::Relaxed);
+    }
+    pub fn record_memory_usage(&self, memory_usage: usize) {
+        
+        let mut current = self.peak_memory_usage.load(Ordering::Relaxed);
+        while memory_usage > current {
+            match self.peak_memory_usage.compare_exchange(
+                current,
+                memory_usage,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
+                Ok(_) => break,
+                Err(actual) => current = actual,
             }
+        }
+    }
+    pub fn reset(&self) {
+        self.total_calls.store(0, Ordering::Relaxed);
+        self.error_count.store(0, Ordering::Relaxed);
+        self.avg_execution_time_ns.store(0, Ordering::Relaxed);
+        self.last_executed_ms.store(0, Ordering::Relaxed);
+        self.peak_memory_usage.store(0, Ordering::Relaxed);
+    }
+    pub fn snapshot(&self) -> PerformanceMetrics {
+        let total_calls = self.total_calls.load(Ordering::Relaxed);
+        let error_count = self.error_count.load(Ordering::Relaxed);
+        let avg_ns = self.avg_execution_time_ns.load(Ordering::Relaxed);
+        let last_ms = self.last_executed_ms.load(Ordering::Relaxed);
+        let peak = self.peak_memory_usage.load(Ordering::Relaxed);
+        let success_rate = if total_calls > 0 {
+            (total_calls - error_count) as f64 / total_calls as f64
         } else {
-            self.error_count += 1;
-        }
-        if self.total_calls > 0 {
-            self.success_rate =
-                (self.total_calls - self.error_count) as f64 / self.total_calls as f64;
+            0.0
+        };
+        let last_executed = if last_ms > 0 {
+            let secs = (last_ms / 1000) as i64;
+            let millis_part = (last_ms % 1000) as u32;
+            let opt = Utc.timestamp_opt(secs, millis_part * 1_000_000);
+            opt.single().unwrap_or_else(Utc::now)
         } else {
-            self.success_rate = 0.0;
+            Utc::now()
+        };
+        PerformanceMetrics {
+            avg_execution_time: Duration::from_nanos(avg_ns),
+            total_calls,
+            peak_memory_usage: peak,
+            last_executed,
+            error_count,
+            success_rate,
         }
     }
-    pub fn record_memory_usage(&mut self, memory_usage: usize) {
-        if memory_usage > self.peak_memory_usage {
-            self.peak_memory_usage = memory_usage;
-        }
+    pub fn to_stats_map(&self) -> HashMap<String, Value> {
+        self.snapshot().to_stats_map()
     }
-    pub fn reset(&mut self) {
-        *self = Self::default();
-    }
-    pub fn merge(&mut self, other: &PerformanceMetrics) {
-        let total_calls = self.total_calls + other.total_calls;
-        if total_calls > 0 {
-            let self_weight = self.total_calls as f64 / total_calls as f64;
-            let other_weight = other.total_calls as f64 / total_calls as f64;
-            let new_avg_nanos = self_weight * self.avg_execution_time.as_nanos() as f64
-                + other_weight * other.avg_execution_time.as_nanos() as f64;
-            self.avg_execution_time = Duration::from_nanos(new_avg_nanos as u64);
-            self.total_calls = total_calls;
-            self.error_count += other.error_count;
-            self.success_rate =
-                (self.total_calls - self.error_count) as f64 / self.total_calls as f64;
-            self.peak_memory_usage = self.peak_memory_usage.max(other.peak_memory_usage);
-            self.last_executed = self.last_executed.max(other.last_executed);
-        } else if self.total_calls == 0 {
-            self.avg_execution_time = other.avg_execution_time;
-            self.peak_memory_usage = other.peak_memory_usage;
-            self.last_executed = other.last_executed;
-        }
-    }
-    pub fn get_calls_per_second(&self, time_window: Duration) -> f64 {
-        if time_window.is_zero() {
+    
+    pub fn calls_per(&self, window: Duration) -> f64 {
+        if window.is_zero() {
             return 0.0;
         }
+        let snap = self.snapshot();
         let now = Utc::now();
-        let chrono_time_window = match chrono::Duration::from_std(time_window) {
-            Ok(d) => d,
-            Err(_) => return 0.0,
-        };
-        let window_start = now - chrono_time_window;
-        if self.last_executed < window_start {
+        if now - chrono::Duration::from_std(window).unwrap_or_default() > snap.last_executed {
             0.0
-        } else if time_window.as_secs_f64() > 0.0 {
-            self.total_calls as f64 / time_window.as_secs_f64()
         } else {
-            0.0
+            snap.total_calls as f64 / window.as_secs_f64().max(1e-9)
         }
     }
+}
+
+impl PerformanceMetrics {
     pub fn to_stats_map(&self) -> HashMap<String, Value> {
         let mut stats = HashMap::new();
         stats.insert(
@@ -108,7 +157,7 @@ impl PerformanceMetrics {
             Value::Number(self.total_calls.into()),
         );
         stats.insert(
-            "peak_memory_usage".to_string(),
+            "peak_memory_usage_bytes".to_string(),
             Value::Number(self.peak_memory_usage.into()),
         );
         stats.insert(

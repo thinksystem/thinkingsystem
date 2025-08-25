@@ -17,15 +17,15 @@ pub mod llm;
 pub mod messaging;
 pub mod policy;
 
-pub use iam::{
-    Claims, DidDocument, JwtManager, TokenError, VcManager, VerifiableCredential,
-};
 #[cfg(feature = "surrealdb")]
 pub use iam::IdentityProvider;
+pub use iam::{Claims, DidDocument, JwtManager, TokenError, VcManager, VerifiableCredential};
 
 pub use llm::security::SecurityProcessor;
 pub use llm::{AnthropicClient, ApiClient, OpenAIClient};
 
+#[cfg(feature = "surrealdb")]
+pub use messaging::MessagingApp;
 #[cfg(feature = "surrealdb")]
 pub use messaging::{
     AlertPriority, ClientStatus, ContentAnalyser, ContentAnalysis, ManagerConfig,
@@ -33,8 +33,6 @@ pub use messaging::{
     MessageType, MessagingClient, MetadataValue, NetworkStats, OptimalPath,
     PathfindingNetworkManager, PlatformManager,
 };
-#[cfg(feature = "surrealdb")]
-pub use messaging::MessagingApp;
 
 pub use policy::{AuthorisationDecision, PolicyEngine, PolicyLoader};
 

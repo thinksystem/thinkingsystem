@@ -40,7 +40,7 @@ impl ImportExportManager {
                 "error_count": metrics.error_count,
                 "success_rate": metrics.success_rate,
                 "avg_execution_time_ms": metrics.avg_execution_time.as_millis(),
-                "peak_memory_usage": metrics.peak_memory_usage,
+                "peak_memory_usage_bytes": metrics.peak_memory_usage,
                 "last_executed": metrics.last_executed
             });
         }

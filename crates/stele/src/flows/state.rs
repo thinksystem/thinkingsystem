@@ -11,10 +11,15 @@
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
 use crate::flows::flowgorithm::Binder;
+use crate::flows::state_metrics::StateMetrics;
 use chrono::{DateTime, Utc};
+use serde::de::{MapAccess, Visitor};
+use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize};
+use serde::{Deserializer, Serializer};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
@@ -44,7 +49,7 @@ pub enum StateError {
     #[error("Compare and swap failed: current value differs")]
     CompareAndSwapFailed,
 }
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct UnifiedState {
     pub user_id: String,
     pub operator_id: String,
@@ -55,12 +60,13 @@ pub struct UnifiedState {
     pub metadata: HashMap<String, Value>,
     pub flow_context: Option<Value>,
     pub skill_context: Option<Value>,
-    #[serde(skip)]
     pub binder: Option<Arc<Binder>>,
     pub version: u64,
     pub previous_versions: Vec<StateSnapshot>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub metrics: Option<StateMetrics>,
+    pub checksum: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StateSnapshot {
@@ -68,6 +74,12 @@ pub struct StateSnapshot {
     pub data: HashMap<String, Value>,
     pub metadata: HashMap<String, Value>,
     pub timestamp: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub flow_context: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skill_context: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checksum: Option<String>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LockType {
@@ -336,6 +348,8 @@ impl UnifiedState {
             previous_versions: Vec::new(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
+            metrics: Some(StateMetrics::default()),
+            checksum: None,
         }
     }
     pub fn with_flow(mut self, flow_id: String) -> Self {
@@ -354,6 +368,9 @@ impl UnifiedState {
             data: self.data.clone(),
             metadata: self.metadata.clone(),
             timestamp: self.updated_at,
+            flow_context: self.flow_context.clone(),
+            skill_context: self.skill_context.clone(),
+            checksum: self.checksum.clone(),
         }
     }
     fn increment_version(&mut self) {
@@ -363,6 +380,13 @@ impl UnifiedState {
         self.previous_versions.push(self.create_snapshot());
         self.version += 1;
         self.updated_at = Utc::now();
+        if let Some(m) = self.metrics.as_mut() {
+            m.modification_count += 1;
+        }
+        self.update_checksum();
+        if let Some(m) = self.metrics.as_mut() {
+            m.recalc_sizes(&self.data, &self.metadata);
+        }
     }
     #[instrument(skip(self, value), fields(key = %key))]
     pub fn set_data(&mut self, key: String, value: Value) {
@@ -373,6 +397,12 @@ impl UnifiedState {
             "Data updated for key: {} (old: {:?}, new: {:?})",
             key, old_value, value
         );
+        if let Some(m) = self.metrics.as_mut() {
+            m.access_count += 1;
+        }
+        if let Some(m) = self.metrics.as_mut() {
+            m.recalc_sizes(&self.data, &self.metadata);
+        }
     }
     pub fn get_data(&self, key: &str) -> Option<&Value> {
         self.data.get(key)
@@ -380,6 +410,12 @@ impl UnifiedState {
     pub fn set_metadata(&mut self, key: String, value: Value) {
         self.increment_version();
         self.metadata.insert(key, value);
+        if let Some(m) = self.metrics.as_mut() {
+            m.modification_count += 1;
+        }
+        if let Some(m) = self.metrics.as_mut() {
+            m.recalc_sizes(&self.data, &self.metadata);
+        }
     }
     pub fn get_metadata(&self, key: &str) -> Option<&Value> {
         self.metadata.get(key)
@@ -404,6 +440,9 @@ impl UnifiedState {
         self.binder = None;
         self.data.clear();
         debug!("Flow data cleared");
+        if let Some(m) = self.metrics.as_mut() {
+            m.recalc_sizes(&self.data, &self.metadata);
+        }
     }
     #[instrument(skip(self), fields(key = %key, delta = %delta))]
     pub fn atomic_increment(&mut self, key: &str, delta: i64) -> Result<i64, StateError> {
@@ -418,6 +457,9 @@ impl UnifiedState {
             "Atomic increment on key {}: {} + {} = {}",
             key, current_value, delta, new_value
         );
+        if let Some(m) = self.metrics.as_mut() {
+            m.recalc_sizes(&self.data, &self.metadata);
+        }
         Ok(new_value)
     }
     #[instrument(skip(self, value), fields(key = %key))]
@@ -433,6 +475,9 @@ impl UnifiedState {
         let new_length = array.len();
         self.data.insert(key.to_string(), Value::Array(array));
         debug!("Atomic append to key {}: new length = {}", key, new_length);
+        if let Some(m) = self.metrics.as_mut() {
+            m.recalc_sizes(&self.data, &self.metadata);
+        }
         Ok(new_length)
     }
     #[instrument(skip(self, expected, new_value), fields(key = %key))]
@@ -448,6 +493,9 @@ impl UnifiedState {
                 self.increment_version();
                 self.data.insert(key.to_string(), new_value);
                 debug!("Compare and swap succeeded for key: {}", key);
+                if let Some(m) = self.metrics.as_mut() {
+                    m.recalc_sizes(&self.data, &self.metadata);
+                }
                 Ok(true)
             }
             _ => {
@@ -468,9 +516,15 @@ impl UnifiedState {
         self.metadata = snapshot.metadata.clone();
         self.version = snapshot.version;
         self.updated_at = Utc::now();
+        self.flow_context = snapshot.flow_context.clone();
+        self.skill_context = snapshot.skill_context.clone();
+        self.checksum = snapshot.checksum.clone();
         self.previous_versions
             .retain(|s| s.version < target_version);
         debug!("Rolled back to version: {}", target_version);
+        if let Some(m) = self.metrics.as_mut() {
+            m.recalc_sizes(&self.data, &self.metadata);
+        }
         Ok(())
     }
     pub fn get_version_history(&self) -> &[StateSnapshot] {
@@ -512,6 +566,21 @@ impl UnifiedState {
             ));
         }
         Ok(())
+    }
+}
+impl UnifiedState {
+    fn update_checksum(&mut self) {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        self.version.hash(&mut hasher);
+        for (k, v) in &self.data {
+            k.hash(&mut hasher);
+            if let Ok(js) = serde_json::to_string(v) {
+                js.hash(&mut hasher);
+            }
+        }
+        self.checksum = Some(format!("{:x}", hasher.finish()));
     }
 }
 #[async_trait::async_trait]
@@ -918,4 +987,125 @@ pub async fn wait_for_flow_participants(
     manager
         .wait_at_barrier(barrier_id, participant_id.to_string())
         .await
+}
+
+
+impl Serialize for UnifiedState {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("UnifiedState", 15)?; 
+        state.serialize_field("user_id", &self.user_id)?;
+        state.serialize_field("operator_id", &self.operator_id)?;
+        state.serialize_field("channel_id", &self.channel_id)?;
+        state.serialize_field("flow_id", &self.flow_id)?;
+        state.serialize_field("block_id", &self.block_id)?;
+        state.serialize_field("data", &self.data)?;
+        state.serialize_field("metadata", &self.metadata)?;
+        state.serialize_field("flow_context", &self.flow_context)?;
+        state.serialize_field("skill_context", &self.skill_context)?;
+        state.serialize_field("version", &self.version)?;
+        state.serialize_field("previous_versions", &self.previous_versions)?;
+        state.serialize_field("created_at", &self.created_at)?;
+        state.serialize_field("updated_at", &self.updated_at)?;
+        state.serialize_field("checksum", &self.checksum)?;
+        state.end()
+    }
+}
+
+struct UnifiedStateVisitor;
+
+impl<'de> Visitor<'de> for UnifiedStateVisitor {
+    type Value = UnifiedState;
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a UnifiedState struct")
+    }
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+        M: MapAccess<'de>,
+    {
+        use serde::de::Error;
+        let mut user_id = None;
+        let mut operator_id = None;
+        let mut channel_id = None;
+        let mut flow_id = None;
+        let mut block_id = None;
+        let mut data = None;
+        let mut metadata = None;
+        let mut flow_context = None;
+        let mut skill_context = None;
+        let mut version = None;
+        let mut previous_versions = None;
+        let mut created_at = None;
+        let mut updated_at = None;
+        let mut checksum = None;
+        while let Some(key) = map.next_key::<String>()? {
+            match key.as_str() {
+                "user_id" => user_id = Some(map.next_value()?),
+                "operator_id" => operator_id = Some(map.next_value()?),
+                "channel_id" => channel_id = Some(map.next_value()?),
+                "flow_id" => flow_id = Some(map.next_value()?),
+                "block_id" => block_id = Some(map.next_value()?),
+                "data" => data = Some(map.next_value()?),
+                "metadata" => metadata = Some(map.next_value()?),
+                "flow_context" => flow_context = Some(map.next_value()?),
+                "skill_context" => skill_context = Some(map.next_value()?),
+                "version" => version = Some(map.next_value()?),
+                "previous_versions" => previous_versions = Some(map.next_value()?),
+                "created_at" => created_at = Some(map.next_value()?),
+                "updated_at" => updated_at = Some(map.next_value()?),
+                "checksum" => checksum = Some(map.next_value()?),
+                _ => {
+                    let _: serde::de::IgnoredAny = map.next_value()?;
+                }
+            }
+        }
+        Ok(UnifiedState {
+            user_id: user_id.ok_or_else(|| Error::missing_field("user_id"))?,
+            operator_id: operator_id.ok_or_else(|| Error::missing_field("operator_id"))?,
+            channel_id: channel_id.ok_or_else(|| Error::missing_field("channel_id"))?,
+            flow_id: flow_id.unwrap_or(None),
+            block_id: block_id.unwrap_or(None),
+            data: data.unwrap_or_default(),
+            metadata: metadata.unwrap_or_default(),
+            flow_context: flow_context.unwrap_or(None),
+            skill_context: skill_context.unwrap_or(None),
+            binder: None,
+            version: version.unwrap_or(1),
+            previous_versions: previous_versions.unwrap_or_default(),
+            created_at: created_at.unwrap_or_else(Utc::now),
+            updated_at: updated_at.unwrap_or_else(Utc::now),
+            metrics: Some(StateMetrics::default()),
+            checksum: checksum.unwrap_or(None),
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for UnifiedState {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_struct(
+            "UnifiedState",
+            &[
+                "user_id",
+                "operator_id",
+                "channel_id",
+                "flow_id",
+                "block_id",
+                "data",
+                "metadata",
+                "flow_context",
+                "skill_context",
+                "version",
+                "previous_versions",
+                "created_at",
+                "updated_at",
+                "checksum",
+            ],
+            UnifiedStateVisitor,
+        )
+    }
 }

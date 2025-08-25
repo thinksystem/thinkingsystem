@@ -56,6 +56,24 @@ impl DatabaseInterface {
     pub fn new(db: Arc<Surreal<Client>>) -> Self {
         Self { db }
     }
+
+
+
+
+
+
+
+
+
+    fn normalize_record_id(id: &str, table_hint: Option<&str>) -> String {
+        let trimmed = id.trim();
+        if let Some((table, right)) = trimmed.split_once(':') {
+            format!("{}:{}", table, Self::clean_record_id(right))
+        } else {
+            let table = table_hint.unwrap_or("content_nodes");
+            format!("{}:{}", table, Self::clean_record_id(trimmed))
+        }
+    }
     pub async fn execute_batch_commands(
         &self,
         commands: &[DatabaseCommand],
@@ -67,14 +85,67 @@ impl DatabaseInterface {
             let result = self.execute_command(&commands[0]).await?;
             return Ok(vec![result]);
         }
+
+
+
+        let atomic_requested = commands.iter().any(|c| c
+            .metadata
+            .get("atomic")
+            .map(|v| v == "true")
+            .unwrap_or(false));
+
+        let all_creates_simple = commands.iter().all(|c| match c.operation {
+            Operation::Create => c.entities.node_data.is_some(),
+            _ => false,
+        });
+
         let mut transaction_queries = Vec::new();
         let mut results = Vec::new();
+        if atomic_requested && all_creates_simple {
+
+            for command in commands.iter() {
+                if let Operation::Create = command.operation {
+                    if let Some(node_data) = &command.entities.node_data {
+                        let table = match command.graph_type {
+                            GraphType::Agent => "entity_nodes",
+                            GraphType::Event => "event_nodes",
+                            GraphType::Personalisation => "location_nodes",
+                            GraphType::Knowledge => "relationship_nodes",
+                        };
+                        let id = format!("{}", uuid::Uuid::new_v4().simple());
+                        let clean_id = Self::clean_record_id(&id);
+                        transaction_queries.push(format!(
+                            "CREATE {}:{} CONTENT {} SET created_at = time::now()",
+                            table,
+                            clean_id,
+                            serde_json::to_string(node_data)?
+                        ));
+                    }
+                }
+            }
+            if !transaction_queries.is_empty() {
+                let transaction = format!(
+                    "BEGIN TRANSACTION; {}; COMMIT TRANSACTION;",
+                    transaction_queries.join("; ")
+                );
+                let mut result = self.db.query(&transaction).await?;
+                let _: Vec<serde_json::Value> = result.take(0)?;
+                results.push(QueryResult {
+                    data: serde_json::json!({"status": "batch_executed", "count": transaction_queries.len(), "atomic": true}),
+                    metadata: HashMap::from([("operation".to_string(), "batch_transaction".to_string())]),
+                    execution_time_ms: 0,
+                });
+                return Ok(results);
+            }
+        }
+
+
         for command in commands.iter() {
             match &command.operation {
                 Operation::Create => {
                     if let Some(node_data) = &command.entities.node_data {
                         let table = match command.graph_type {
-                            GraphType::Agent => "agent_nodes",
+                            GraphType::Agent => "entity_nodes",
                             GraphType::Event => "event_nodes",
                             GraphType::Personalisation => "location_nodes",
                             GraphType::Knowledge => "relationship_nodes",
@@ -103,7 +174,7 @@ impl DatabaseInterface {
             let mut result = self.db.query(&transaction).await?;
             let _: Vec<serde_json::Value> = result.take(0)?;
             results.push(QueryResult {
-                data: serde_json::json!({"status": "batch_executed", "count": transaction_queries.len()}),
+                data: serde_json::json!({"status": "batch_executed", "count": transaction_queries.len(), "atomic": false}),
                 metadata: HashMap::from([("operation".to_string(), "batch_transaction".to_string())]),
                 execution_time_ms: 0,
             });
@@ -122,7 +193,8 @@ impl DatabaseInterface {
         match &command.operation {
             Operation::Create => {
                 let table = match command.graph_type {
-                    GraphType::Agent => "agent_nodes",
+
+                    GraphType::Agent => "entity_nodes",
                     GraphType::Event => "event_nodes",
                     GraphType::Personalisation => "location_nodes",
                     GraphType::Knowledge => "relationship_nodes",
@@ -207,30 +279,32 @@ impl DatabaseInterface {
             }
             Operation::Update => {
                 if let Some(node_data) = &command.entities.node_data {
-                    let id = command
-                        .entities
-                        .filters
-                        .get("id")
-                        .ok_or("Missing id for update operation")?;
-                    let clean_id = Self::clean_record_id(id);
-                    let query = format!("UPDATE event_nodes:{clean_id} MERGE $data RETURN *");
-                    println!("Executing update query: {query}");
-                    let mut result = self
-                        .db
-                        .query(&query)
-                        .bind(("data", node_data.clone()))
+
+                    let table_hint = match command.graph_type {
+                        GraphType::Agent => "entity_nodes",
+                        GraphType::Event => "event_nodes",
+                        GraphType::Personalisation => "location_nodes",
+                        GraphType::Knowledge => "content_nodes",
+                    };
+                    let mut filters = command.entities.filters.clone();
+                    if let Some(id) = filters.get("id").cloned() {
+                        let normalized = Self::normalize_record_id(&id, Some(table_hint));
+                        filters.insert("id".to_string(), normalized);
+                    }
+
+                    let result_val = self
+                        .update_node(DatabaseEntities {
+                            node_data: Some(node_data.clone()),
+                            edge_data: None,
+                            filters,
+                        })
                         .await
                         .map_err(|e| {
-                            println!("SurrealDB update error: {e}");
+                            println!("Update error: {e}");
                             e
                         })?;
-                    let updated: Option<serde_json::Value> = result.take(0)?;
                     Ok(QueryResult {
-                        data: serde_json::json!({
-                            "status": "updated",
-                            "id": id,
-                            "data": updated
-                        }),
+                        data: result_val,
                         metadata: HashMap::from([("operation".to_string(), "update".to_string())]),
                         execution_time_ms: start_time.elapsed().as_millis() as u64,
                     })
@@ -245,14 +319,43 @@ impl DatabaseInterface {
                     })
                 }
             }
-            Operation::Delete => Ok(QueryResult {
-                data: serde_json::json!({
-                    "message": "Delete operation not yet implemented",
-                    "status": "not_implemented"
-                }),
-                metadata: HashMap::from([("operation".to_string(), "delete".to_string())]),
-                execution_time_ms: start_time.elapsed().as_millis() as u64,
-            }),
+            Operation::Delete => {
+
+                if !command.entities.filters.contains_key("id") {
+                    return Ok(QueryResult {
+                        data: serde_json::json!({
+                            "error": "Delete requires explicit 'id' filter",
+                            "status": "failed"
+                        }),
+                        metadata: HashMap::from([("operation".to_string(), "delete".to_string())]),
+                        execution_time_ms: start_time.elapsed().as_millis() as u64,
+                    });
+                }
+
+                let table_hint = match command.graph_type {
+                    GraphType::Agent => "entity_nodes",
+                    GraphType::Event => "event_nodes",
+                    GraphType::Personalisation => "location_nodes",
+                    GraphType::Knowledge => "content_nodes",
+                };
+                let mut filters = command.entities.filters.clone();
+                if let Some(id) = filters.get("id").cloned() {
+                    let normalized = Self::normalize_record_id(&id, Some(table_hint));
+                    filters.insert("id".to_string(), normalized);
+                }
+                let result_val = self
+                    .delete_node(&filters)
+                    .await
+                    .map_err(|e| {
+                        println!("Delete error: {e}");
+                        e
+                    })?;
+                Ok(QueryResult {
+                    data: result_val,
+                    metadata: HashMap::from([("operation".to_string(), "delete".to_string())]),
+                    execution_time_ms: start_time.elapsed().as_millis() as u64,
+                })
+            }
             Operation::Relate => {
                 if let Some(edge_data) = &command.entities.edge_data {
                     match self
@@ -530,6 +633,11 @@ impl DatabaseInterface {
         filters: &HashMap<String, String>,
         entities: Option<&Vec<crate::nlu::orchestrator::data_models::Entity>>,
     ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        #[cfg(feature = "nlu_builders")]
+        {
+            static ONCE: std::sync::Once = std::sync::Once::new();
+            ONCE.call_once(|| tracing::warn!("manage_graph_node: legacy API in use (nlu_builders enabled); prefer builders"));
+        }
         match operation {
             "query" => self.query_nodes(graph_type, filters).await,
             "update" => {
@@ -553,6 +661,11 @@ impl DatabaseInterface {
         &self,
         extracted_data: &crate::nlu::orchestrator::data_models::ExtractedData,
     ) -> Result<QueryResult, Box<dyn std::error::Error>> {
+        #[cfg(feature = "nlu_builders")]
+        {
+            static ONCE: std::sync::Once = std::sync::Once::new();
+            ONCE.call_once(|| tracing::warn!("store_nlu_data: legacy API in use (nlu_builders enabled); prefer builders"));
+        }
         let start_time = std::time::Instant::now();
         let mut queries = Vec::new();
         let mut created_ids = Vec::new();

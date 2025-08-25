@@ -16,7 +16,7 @@ pub mod types;
 pub mod vc_bridge;
 pub mod vc_types;
 
-// Re-export commonly used items
+
 pub use dynamic_parameters::{adjust_parameters_for_epoch, DynamicParameters, NetworkState};
 pub use types::{ConsumerFactors, PublishedOffering, TrustScore};
 
@@ -111,7 +111,7 @@ pub fn test_add(a: i64, b: i64) -> i64 {
     a + b
 }
 
-// Ensure something obvious we can grep for
+
 #[no_mangle]
 pub extern "C" fn gtr_core_marker() {}
 

@@ -12,8 +12,8 @@ name = "talking-database-demo"
 path = "src/main.rs"
 
 [dependencies]
-stele = { path = "../../../crates/stele" }
-llm-contracts = { path = "../../../crates/llm-contracts" }
+stele = { workspace = true }
+llm-contracts = { workspace = true }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

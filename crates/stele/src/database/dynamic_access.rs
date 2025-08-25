@@ -14,8 +14,10 @@ use crate::database::intent_analyser::{IntelligentIntentAnalyser, IntentError};
 use crate::database::knowledge_adapter::{AdapterError, KnowledgeNodeAdapter};
 use crate::database::query_builder::SelectQuery;
 use crate::database::query_generator::AdvancedQueryGenerator;
-use crate::database::query_kg::QueryKgBuilder;
+use crate::database::query_kg::{QueryKgBuilder, QueryKnowledgeGraph};
+use crate::database::query_validator::{QueryNegotiator, QueryRules};
 use crate::database::schema_analyser::{GraphSchema, GraphSchemaAnalyser, SchemaAnalyserError};
+use crate::database::surreal_token::SurrealTokenParser;
 use crate::nlu::llm_processor::LLMAdapter;
 use crate::nlu::orchestrator::data_models::{AdvancedQueryIntent, KnowledgeNode, QueryComplexity};
 use serde_json::{json, Value};
@@ -70,6 +72,7 @@ pub struct DynamicDataAccessLayer {
     llm_adapter: Arc<dyn LLMAdapter + Send + Sync>,
     intent_analyser: Arc<IntelligentIntentAnalyser>,
     query_generator: Arc<AdvancedQueryGenerator>,
+    query_kg: Arc<QueryKnowledgeGraph>,
     graph_schema: Arc<RwLock<GraphSchema>>,
 }
 
@@ -142,6 +145,7 @@ impl DynamicDataAccessLayer {
             intent_analyser,
             query_generator,
             graph_schema,
+            query_kg,
         })
     }
 
@@ -193,6 +197,13 @@ impl DynamicDataAccessLayer {
         &self,
         intent: &AdvancedQueryIntent,
     ) -> Result<SelectQuery, DdalError> {
+        
+        if let Some(select) = self.try_kg_guided_idiom(&intent.original_query).await {
+            info!("Built query via KG-guided idiom path.");
+            return Ok(select);
+        }
+
+        
         let prompt = self
             .intent_analyser
             .build_prompt_for_query(&intent.original_query)
@@ -220,6 +231,34 @@ impl DynamicDataAccessLayer {
             .map_err(DdalError::QueryBuilding)?;
 
         Ok(select_query)
+    }
+
+    async fn try_kg_guided_idiom(&self, text: &str) -> Option<SelectQuery> {
+        
+        let candidates = self.query_kg.suggest_clauses_for_text(text, 3);
+        if candidates.is_empty() {
+            return None;
+        }
+    
+    let rules = QueryRules {
+            allowed_tables: Vec::new(),
+            max_conditions: 100,
+            allowed_operators: Vec::new(),
+            field_types: std::collections::HashMap::new(),
+            relationships: Vec::new(),
+        };
+    let negotiator = QueryNegotiator::new(rules).with_kg_hints(&self.query_kg);
+        let mut parser = SurrealTokenParser::with_negotiator(negotiator);
+        for _cand in candidates {
+            
+            
+            let maybe_idiom = text.to_string();
+            if let Ok(idiom) = parser.parse_with_validation(&maybe_idiom) {
+                let select = SurrealTokenParser::convert_idiom_to_select_query(&idiom);
+                return Some(select);
+            }
+        }
+        None
     }
 
     async fn execute_and_hydrate(

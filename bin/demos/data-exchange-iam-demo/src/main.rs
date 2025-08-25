@@ -49,6 +49,7 @@ impl DataExchangeService {
                     "grpc" => ConnectionType::Grpc,
                     "kafka" => ConnectionType::Kafka,
                     "mqtt" => ConnectionType::Mqtt,
+                    "quic" => ConnectionType::Quic,
                     _ => ConnectionType::Rest,
                 },
                 config: p.config.clone(),

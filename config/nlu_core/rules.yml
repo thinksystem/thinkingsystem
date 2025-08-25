@@ -1,0 +1,24 @@
+policies:
+  - name: default
+    priority: 1
+    conditions:
+      input_length: { lte: 2000 }
+    tasks:
+      - name: extract
+        model: local-sim
+        prompt: basic
+        output: entities
+        max_tokens: 128
+        temperature: 0.3
+        top_p: 1.0
+        frequency_penalty: 0.0
+        presence_penalty: 0.0
+        stop: []
+        metadata: {}
+        parsing: {}
+        cost_limit: 0.01
+        success_criteria: []
+        retry_policy:
+          max_retries: 0
+          backoff_ms: 0
+          strategy: none

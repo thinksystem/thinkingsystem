@@ -8,8 +8,16 @@ authors.workspace = true
 license.workspace = true
 
 [features]
-default = []
+default = ["dynamic-wasi"]
 evalexpr = ["dep:evalexpr"]
+provenance_debug = [] # enables extra provenance debug SELECTs
+provenance_dual = []  # enables dual-write (provenance_event) fallback for canonical_event provenance
+nlu_builders = [] # enables experimental builder pattern (NodeBuilder, RelationshipBuilder, IngestBatchBuilder)
+hybrid_relationships = [] # enables hybrid relationship strategy (edge + node record)
+api_v2 = [] # enables dual-return v2 shapes in builder results
+strict_modes = [] # enables stricter legacy API enforcement
+dynamic-native = [] # enables native cdylib dynamic Rust compilation path
+dynamic-wasi = ["dep:wasmtime-wasi"]   # enables wasm32-wasi dynamic Rust compilation path
 
 [dependencies]
 # Workspace crates
@@ -29,10 +37,14 @@ tracing.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 time.workspace = true
+once_cell.workspace = true
 
 # WebAssembly and JIT compilation
 wasmtime.workspace = true
 wat.workspace = true
+libloading.workspace = true
+tempfile.workspace = true
+wasmtime-wasi = { workspace = true, optional = true }
 
 # File system monitoring
 notify.workspace = true

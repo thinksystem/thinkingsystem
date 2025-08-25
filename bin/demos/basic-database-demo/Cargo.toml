@@ -12,7 +12,7 @@ name = "basic-database-demo"
 path = "src/main.rs"
 
 [dependencies]
-stele = { path = "../../../crates/stele" }
+stele = { workspace = true }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

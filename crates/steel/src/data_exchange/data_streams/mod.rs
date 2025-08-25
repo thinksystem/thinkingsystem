@@ -22,6 +22,7 @@ pub mod grpc;
 pub mod kafka;
 pub mod mock;
 pub mod mqtt;
+pub mod quic;
 pub mod topics;
 
 pub use cloudevents::{
@@ -37,6 +38,7 @@ pub use grpc::*;
 pub use kafka::*;
 pub use mock::*;
 pub use mqtt::*;
+pub use quic::*;
 pub use topics::*;
 #[derive(Debug)]
 pub enum Error {

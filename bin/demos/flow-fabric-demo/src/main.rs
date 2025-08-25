@@ -10,7 +10,7 @@ use stele::llm::{core::LLMAdapter, unified_adapter::UnifiedLLMAdapter};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
-// Import fabric types via crate re-exports to avoid private module issues
+
 use gtr_core::{ConsumerFactors, DynamicParameters, PublishedOffering, TrustScore};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -34,7 +34,7 @@ struct FabricSelection {
     utility: f64,
 }
 
-// Provider DTO fetched from fabric HTTP endpoint
+
 #[derive(serde::Deserialize, Debug)]
 struct ProviderDto {
     id: String,
@@ -47,15 +47,15 @@ struct ProviderDto {
 
 #[derive(Parser, Debug)]
 struct Args {
-    /// Public API endpoint to analyse and call
+    
     #[arg(long)]
     endpoint: String,
 
-    /// High-level goal for the call plan
+    
     #[arg(long)]
     goal: String,
 
-    /// If set, skip fabric selection and call endpoint directly
+    
     #[arg(long, default_value_t = false)]
     direct: bool,
 }
@@ -68,7 +68,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     info!(endpoint = %args.endpoint, goal = %args.goal, direct = args.direct, "Starting Flow + Fabric demo");
 
-    // --- LLM planning ---
+    
     let models_path = if std::path::Path::new("crates/stele/src/nlu/config/llm_models.yml").exists()
     {
         "crates/stele/src/nlu/config/llm_models.yml"
@@ -84,7 +84,7 @@ async fn main() -> Result<()> {
     let plan = plan_api(&llm, &args.endpoint, &args.goal, &sample).await?;
     info!(optimised_url = %plan.optimised_url, "Plan generated");
 
-    // --- Fabric integration ---
+    
     let mut selection = if args.direct {
         None
     } else {
@@ -111,7 +111,7 @@ async fn main() -> Result<()> {
             serde_json::to_string_pretty(&sel)?
         );
     }
-    // Use inline variable capture for clippy friendliness
+    
     println!("=== Response (truncated) ===\n{resp}");
 
     Ok(())
@@ -128,7 +128,7 @@ async fn plan_api(
         serde_json::to_string_pretty(sample)?
     );
 
-    // Build flexible capability requirements: require reasoning, prefer anthropic_flow if available
+    
     let mut capabilities = vec!["reasoning".into()];
     if std::env::var("ANTHROPIC_API_KEY").is_ok() {
         capabilities.insert(0, "anthropic_flow".into());
@@ -176,19 +176,19 @@ async fn select_via_fabric(plan: &ApiPlan) -> Result<FabricSelection> {
         budget: 2_000,
         cost_of_failure: 5_000.0,
     };
-    let providers = fetch_fabric_providers().await?; // fail fast if unreachable
+    let providers = fetch_fabric_providers().await?; 
     if providers.is_empty() {
         anyhow::bail!("no providers returned by fabric");
     }
 
-    // Choose best by reported utility, fallback to local computation if missing
-    let mut best: Option<(&ProviderDto, f64, f64, f64)> = None; // (provider, util, price, collateral)
+    
+    let mut best: Option<(&ProviderDto, f64, f64, f64)> = None; 
     for p in providers.iter() {
         let trust = TrustScore {
             value: p.trust,
             last_updated_ts: 0,
         };
-        // Extract offering (price, collateral) if supplied
+        
         let (price_per_call_raw, staked_collateral_raw) = p
             .offering
             .as_ref()
@@ -201,7 +201,7 @@ async fn select_via_fabric(plan: &ApiPlan) -> Result<FabricSelection> {
                 }
             })
             .unwrap_or_else(|| {
-                // Fallback: compute locally
+                
                 let (p_micro, s_col) = gtr_core::core::calculate_supplier_offering(&trust, &params);
                 (p_micro as f64, s_col as f64)
             });
@@ -221,7 +221,7 @@ async fn select_via_fabric(plan: &ApiPlan) -> Result<FabricSelection> {
 
     let (chosen, util, price_raw, collateral_raw) = best.expect("at least one provider");
 
-    // VC issuance
+    
     let issuer_secret =
         std::env::var("FABRIC_ISSUER_SECRET").unwrap_or_else(|_| "dev_issuer_secret".into());
     let issuer_aud =
@@ -257,7 +257,7 @@ async fn select_via_fabric(plan: &ApiPlan) -> Result<FabricSelection> {
 
     info!(provider = %chosen.id, price_per_call = price_raw, staked = collateral_raw, trust = chosen.trust, utility = util, "Fabric selection summary");
 
-    // Assume raw price is already in micro units if large; normalise by dividing by 1_000_000. If small (< 1_000) treat as already normalised.
+    
     let price_normalised = if price_raw > 1_000.0 {
         price_raw / 1_000_000.0
     } else {
@@ -267,7 +267,7 @@ async fn select_via_fabric(plan: &ApiPlan) -> Result<FabricSelection> {
     Ok(FabricSelection {
         provider: chosen.id.clone(),
         price: price_normalised,
-        latency_ms: 0, // to be filled post-call
+        latency_ms: 0, 
         trust_score: chosen.trust,
         vc_issuer: steel_vc.proof.verification_method.clone(),
         vc_id: steel_vc.id.unwrap_or_default(),

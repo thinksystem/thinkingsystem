@@ -20,6 +20,7 @@ pub enum ConnectionType {
     Grpc,
     Kafka,
     Mqtt,
+    Quic,
     Rest,
     Webhook,
 }
@@ -30,6 +31,7 @@ impl FromStr for ConnectionType {
             "grpc" => Ok(ConnectionType::Grpc),
             "kafka" => Ok(ConnectionType::Kafka),
             "mqtt" => Ok(ConnectionType::Mqtt),
+            "quic" => Ok(ConnectionType::Quic),
             "rest" => Ok(ConnectionType::Rest),
             "webhook" => Ok(ConnectionType::Webhook),
             _ => Err(DataExchangeError::InvalidConnectionType(s.to_string())),

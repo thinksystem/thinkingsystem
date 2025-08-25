@@ -13,9 +13,9 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal crates
-stele = { path = "../../../crates/stele" }
-steel = { path = "../../../crates/steel" }
-llm-contracts = { path = "../../../crates/llm-contracts" }
+stele = { workspace = true }
+steel = { workspace = true }
+llm-contracts = { workspace = true }
 
 # External dependencies (using workspace deps where possible)
 tokio.workspace = true
@@ -31,5 +31,5 @@ tracing-subscriber.workspace = true
 uuid.workspace = true
 reqwest.workspace = true
 clap.workspace = true
-dotenvy = "0.15"
+dotenvy.workspace = true
 surrealdb = { workspace = true, features = ["kv-mem"] }

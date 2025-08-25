@@ -16,10 +16,11 @@ use crate::data_exchange::data_streams::grpc::{
     create_grpc_data_exchange, DataExchange as GrpcDataExchangeTrait, GrpcApiClientImpl,
     GrpcDataExchange,
 };
+use crate::data_exchange::data_streams::quic::QuicExchangeProvider;
 use crate::data_exchange::error::DataExchangeError;
 use crate::data_exchange::exchange_interfaces::{ConnectionType, DataExchangeImpl};
 use async_trait::async_trait;
-use rdkafka::producer::{FutureProducer, FutureRecord};
+use rdkafka::producer::{FutureProducer, FutureRecord, Producer};
 use rdkafka::ClientConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -223,10 +224,21 @@ impl DataExchangeImpl<String, Result<HashMap<String, String>, DataExchangeError>
 }
 pub struct DataExchangeProcessor {
     providers: HashMap<String, DataExchangeProvider>,
+    provider_types: HashMap<String, ConnectionType>,
+    provider_configs: HashMap<String, ProviderConfig>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderInfo {
+    pub name: String,
+    pub connection_type: ConnectionType,
+}
+
 impl DataExchangeProcessor {
     pub async fn new(config: &DataExchangeConfig) -> Result<Self, DataExchangeError> {
         let mut providers: HashMap<String, Box<dyn DataExchangeImpl<_, _>>> = HashMap::new();
+        let mut provider_types: HashMap<String, ConnectionType> = HashMap::new();
+        let mut provider_configs: HashMap<String, ProviderConfig> = HashMap::new();
         for provider_config in &config.providers {
             let provider_name = provider_config.name.clone();
             let provider_instance: Box<dyn DataExchangeImpl<_, _>> =
@@ -247,10 +259,160 @@ impl DataExchangeProcessor {
                         let grpc_provider = GrpcExchangeProvider::new(provider_config).await?;
                         Box::new(grpc_provider)
                     }
+                    ConnectionType::Quic => {
+                        let quic_provider = QuicExchangeProvider::new(provider_config).await?;
+                        Box::new(quic_provider)
+                    }
                 };
+            provider_types.insert(
+                provider_name.clone(),
+                provider_config.connection_type.clone(),
+            );
+            
+            provider_configs.insert(provider_name.clone(), provider_config.clone());
             providers.insert(provider_name, provider_instance);
         }
-        Ok(Self { providers })
+        Ok(Self {
+            providers,
+            provider_types,
+            provider_configs,
+        })
+    }
+
+    pub fn list_providers(&self) -> Vec<ProviderInfo> {
+        self.provider_types
+            .iter()
+            .map(|(name, ct)| ProviderInfo {
+                name: name.clone(),
+                connection_type: ct.clone(),
+            })
+            .collect()
+    }
+
+    pub async fn add_provider(&mut self, cfg: ProviderConfig) -> Result<(), DataExchangeError> {
+        let name = cfg.name.clone();
+        if self.providers.contains_key(&name) {
+            return Err(DataExchangeError::Configuration(format!(
+                "provider '{name}' exists"
+            )));
+        }
+        let instance: Box<dyn DataExchangeImpl<_, _>> = match cfg.connection_type {
+            ConnectionType::Rest | ConnectionType::Webhook => {
+                Box::new(HttpDataExchangeImpl::new(&cfg)?)
+            }
+            ConnectionType::Mqtt => Box::new(MqttExchangeProvider::new(&cfg).await?),
+            ConnectionType::Kafka => Box::new(KafkaExchangeProvider::new(&cfg)?),
+            ConnectionType::Grpc => Box::new(GrpcExchangeProvider::new(&cfg).await?),
+            ConnectionType::Quic => Box::new(QuicExchangeProvider::new(&cfg).await?),
+        };
+        self.provider_types
+            .insert(name.clone(), cfg.connection_type.clone());
+        self.provider_configs.insert(name.clone(), cfg);
+        self.providers.insert(name, instance);
+        Ok(())
+    }
+
+    pub fn remove_provider(&mut self, name: &str) -> bool {
+        self.providers.remove(name).is_some()
+            & self.provider_types.remove(name).is_some()
+            & self.provider_configs.remove(name).is_some()
+    }
+
+    pub async fn provider_health(
+        &self,
+        provider_name: &str,
+    ) -> Result<HashMap<String, String>, DataExchangeError> {
+        if !self.providers.contains_key(provider_name) {
+            return Err(DataExchangeError::ProviderNotFound(
+                provider_name.to_string(),
+            ));
+        }
+        let mut map = HashMap::new();
+        let ct = self
+            .provider_types
+            .get(provider_name)
+            .cloned()
+            .unwrap_or(ConnectionType::Rest);
+        map.insert("provider".into(), provider_name.to_string());
+        map.insert("connection_type".into(), format!("{ct:?}"));
+        let cfg = self.provider_configs.get(provider_name);
+        match ct {
+            ConnectionType::Rest | ConnectionType::Webhook => {
+                if let Some(cfg) = cfg {
+                    if let Some(url) = cfg.config.get("base_url") {
+                        let client = reqwest::Client::new();
+                        let res = tokio::time::timeout(
+                            std::time::Duration::from_secs(2),
+                            client.get(url).send(),
+                        )
+                        .await;
+                        match res {
+                            Ok(Ok(r)) => {
+                                map.insert("status".into(), "ok".into());
+                                map.insert("http_code".into(), r.status().as_u16().to_string());
+                            }
+                            Ok(Err(e)) => {
+                                map.insert("status".into(), "error".into());
+                                map.insert("error".into(), e.to_string());
+                            }
+                            Err(_) => {
+                                map.insert("status".into(), "timeout".into());
+                            }
+                        }
+                    } else {
+                        map.insert("status".into(), "no_base_url".into());
+                    }
+                }
+            }
+            ConnectionType::Kafka => {
+                if let Some(cfg) = cfg {
+                    if let (Some(bootstrap), Some(topic)) =
+                        (cfg.config.get("bootstrap.servers"), cfg.config.get("topic"))
+                    {
+                        let bootstrap = bootstrap.clone();
+                        let topic_name = topic.clone();
+                        let md = tokio::task::spawn_blocking(move || {
+                            let producer: Result<FutureProducer, _> = ClientConfig::new()
+                                .set("bootstrap.servers", &bootstrap)
+                                .create();
+                            match producer {
+                                Ok(p) => p
+                                    .client()
+                                    .fetch_metadata(
+                                        Some(&topic_name),
+                                        std::time::Duration::from_millis(500),
+                                    )
+                                    .map(|m| (m.orig_broker_id(), m.brokers().len())),
+                                Err(e) => Err(e),
+                            }
+                        })
+                        .await;
+                        match md {
+                            Ok(Ok((_broker_id, broker_count))) => {
+                                map.insert("status".into(), "ok".into());
+                                map.insert("brokers".into(), broker_count.to_string());
+                            }
+                            Ok(Err(e)) => {
+                                map.insert("status".into(), "error".into());
+                                map.insert("error".into(), e.to_string());
+                            }
+                            Err(e) => {
+                                map.insert("status".into(), "error".into());
+                                map.insert("error".into(), e.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+            ConnectionType::Mqtt => {
+                
+                map.insert("status".into(), "assumed_ok".into());
+            }
+            ConnectionType::Grpc | ConnectionType::Quic => {
+                map.insert("status".into(), "unknown".into());
+            }
+        }
+        Ok(map)
     }
     pub async fn exchange_data(
         &self,

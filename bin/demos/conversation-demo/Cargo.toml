@@ -1,0 +1,44 @@
+[package]
+name = "conversation-demo"
+version = "0.1.0"
+edition = "2021"
+authors = ["Thinking Systems Project"]
+license = "AGPL-3.0"
+
+[dependencies]
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+reqwest = { workspace = true }
+dotenvy = { workspace = true }
+tokio = { workspace = true }
+surrealdb = { workspace = true }
+
+# UI (optional; disabled by default)
+eframe = { workspace = true, optional = true }
+egui = { workspace = true, optional = true }
+
+# Project crates
+steel = { workspace = true }
+stele = { workspace = true }
+
+# Orchestration/offload (Phase 8)
+sleet = { workspace = true }
+
+# LLM contracts and utilities used by the CLI
+llm-contracts = { workspace = true }
+uuid = { workspace = true }
+
+[features]
+default = []
+ui = ["dep:eframe", "dep:egui"]
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+once_cell = "1"
+regex = "1"

@@ -13,7 +13,9 @@
 use crate::blocks::registry::BlockRegistry;
 use crate::blocks::rules::{BlockError, BlockResult, BlockType};
 use crate::flows::core::{BlockDefinition, FlowDefinition};
+use crate::flows::dynamic_executor::DynamicSource;
 use crate::flows::dynamic_executor::{DynamicExecutor, DynamicFunction};
+use crate::flows::engine_metrics_atomic::EngineMetricsAtomic;
 use crate::flows::flowgorithm::FlowNavigator;
 use crate::flows::flowgorithm::Flowgorithm;
 use crate::flows::llm_prompt_service::LLMPromptService;
@@ -56,19 +58,33 @@ pub struct EngineMetrics {
     pub version_history: Vec<String>,
     pub last_reload: DateTime<Utc>,
 }
+impl Default for EngineMetrics {
+    fn default() -> Self {
+        Self {
+            processing_time: Duration::default(),
+            blocks_processed: 0,
+            memory_usage: 0,
+            function_calls: HashMap::new(),
+            version_history: Vec::new(),
+            last_reload: Utc::now(),
+        }
+    }
+}
 pub struct UnifiedFlowEngine {
     registry: Arc<BlockRegistry>,
     query_processor: Arc<QueryProcessor>,
     llm_adapter: CustomLLMAdapter,
     navigator: Arc<Flowgorithm>,
     prompt_service: LLMPromptService,
-    metrics: Arc<RwLock<EngineMetrics>>,
+    metrics: EngineMetricsAtomic,
     dynamic_executor: Arc<RwLock<DynamicExecutor>>,
     dynamic_functions: Arc<RwLock<HashMap<String, DynamicFunction>>>,
     function_versions: Arc<RwLock<HashMap<String, Vec<DynamicFunction>>>>,
     hot_reload_enabled: bool,
     security_config: SecurityConfig,
     http_client: Client,
+    
+    preserve_data_on_complete: bool,
 }
 impl UnifiedFlowEngine {
     fn build_http_client(config: &SecurityConfig) -> Result<Client, reqwest::Error> {
@@ -97,20 +113,14 @@ impl UnifiedFlowEngine {
             llm_adapter,
             navigator: Arc::new(navigator),
             prompt_service,
-            metrics: Arc::new(RwLock::new(EngineMetrics {
-                processing_time: Duration::default(),
-                blocks_processed: 0,
-                memory_usage: 0,
-                function_calls: HashMap::new(),
-                version_history: Vec::new(),
-                last_reload: Utc::now(),
-            })),
+            metrics: EngineMetricsAtomic::default(),
             dynamic_executor: Arc::new(RwLock::new(executor)),
             dynamic_functions: Arc::new(RwLock::new(HashMap::new())),
             function_versions: Arc::new(RwLock::new(HashMap::new())),
             hot_reload_enabled: true,
             security_config,
             http_client,
+            preserve_data_on_complete: false,
         }
     }
     pub fn new_with_defaults(
@@ -133,6 +143,9 @@ impl UnifiedFlowEngine {
         })?;
         self.security_config = config;
         Ok(())
+    }
+    pub fn set_preserve_data_on_complete(&mut self, preserve: bool) {
+        self.preserve_data_on_complete = preserve;
     }
     #[instrument(skip(self, batch), fields(batch_size = batch.len(), concurrency = concurrency_limit))]
     pub async fn process_flows_batch(
@@ -271,7 +284,9 @@ impl UnifiedFlowEngine {
                     "Flow {} terminated by block {}.",
                     flow_id, processed_block_id
                 );
-                state.clear_flow_data();
+                if !self.preserve_data_on_complete {
+                    state.clear_flow_data();
+                }
                 break;
             }
             if state
@@ -309,25 +324,21 @@ impl UnifiedFlowEngine {
                     "Flow {} completed. No next block after {}.",
                     flow_id, processed_block_id
                 );
-                state.clear_flow_data();
+                if !self.preserve_data_on_complete {
+                    state.clear_flow_data();
+                }
                 break;
             }
         }
         let processing_time = start_time.elapsed();
         debug!("Flow {} processing took: {:?}", flow_id, processing_time);
-        if let Ok(mut metrics) = self.metrics.write() {
-            metrics.processing_time += processing_time;
-            metrics.blocks_processed += blocks_processed_count;
-        } else {
-            error!("Failed to acquire lock for updating metrics.");
-        }
+        self.metrics.add_processing_time(processing_time);
+        self.metrics
+            .increment_blocks_processed(blocks_processed_count);
         Ok(())
     }
     pub fn get_metrics(&self) -> Result<EngineMetrics, BlockError> {
-        self.metrics.read().map(|guard| guard.clone()).map_err(|e| {
-            error!("Failed to read metrics due to lock poison: {:?}", e);
-            BlockError::LockError
-        })
+        Ok(self.metrics.snapshot())
     }
     #[instrument(skip(self, args), fields(function_name = %function_name))]
     async fn execute_dynamic_function(
@@ -356,17 +367,7 @@ impl UnifiedFlowEngine {
             "Function {} executed in {:?}",
             function_name, execution_time
         );
-        if let Ok(mut metrics) = self.metrics.write() {
-            *metrics
-                .function_calls
-                .entry(function_name.to_string())
-                .or_insert(0) += 1;
-        } else {
-            error!(
-                "Failed to update function call metrics for {}",
-                function_name
-            );
-        }
+        self.metrics.increment_function_call(function_name);
         Ok(result)
     }
     #[instrument(skip(self, state), fields(block_id = %block_id))]
@@ -841,14 +842,63 @@ impl UnifiedFlowEngine {
             error!("Failed to acquire lock for dynamic functions.");
             return Err(BlockError::LockError);
         }
-        if let Ok(mut metrics) = self.metrics.write() {
-            metrics.version_history.push(version_id);
-            metrics.last_reload = Utc::now();
-        } else {
-            error!("Failed to acquire lock for metrics update.");
-        }
+        self.metrics.push_version_history(version_id);
+        self.metrics.update_last_reload();
         info!("Dynamic function {} registered successfully.", id);
         Ok(())
+    }
+    
+    
+    pub fn register_dynamic_source(
+        &self,
+        name: &str,
+        src: DynamicSource,
+    ) -> Result<DynamicFunction, BlockError> {
+        let func = self
+            .dynamic_executor
+            .write()
+            .map_err(|_| BlockError::LockError)?
+            .register_dynamic_source(src)?;
+        if let Ok(mut functions) = self.dynamic_functions.write() {
+            functions.insert(name.to_string(), func.clone());
+        } else {
+            return Err(BlockError::LockError);
+        }
+        if let Ok(mut versions) = self.function_versions.write() {
+            versions
+                .entry(name.to_string())
+                .or_insert_with(Vec::new)
+                .push(func.clone());
+        }
+        self.metrics
+            .push_version_history(format!("v{}", Utc::now().timestamp()));
+        self.metrics.update_last_reload();
+        Ok(func)
+    }
+    
+    pub fn register_native_closure<F>(&self, id: &str, f: F) -> Result<(), BlockError>
+    where
+        F: Fn(&[Value]) -> Result<Value, BlockError> + Send + Sync + 'static,
+    {
+        let dyn_fn = DynamicFunction::new(
+            Arc::new(f),
+            format!("v{}", Utc::now().timestamp()),
+            "native_closure".into(),
+        );
+        if let Ok(mut functions) = self.dynamic_functions.write() {
+            functions.insert(id.to_string(), dyn_fn);
+            Ok(())
+        } else {
+            Err(BlockError::LockError)
+        }
+    }
+    /// Fetch a dynamic function by id (read-only clone of internal Arc) for direct invocation showcase paths.
+    pub async fn get_dynamic_function(&self, id: &str) -> Option<DynamicFunction> {
+        if let Ok(funcs) = self.dynamic_functions.read() {
+            funcs.get(id).cloned()
+        } else {
+            None
+        }
     }
     #[instrument(skip(self, new_code), fields(function_id = %id, hot_reload_enabled = self.hot_reload_enabled))]
     pub async fn hot_reload_function(
@@ -891,6 +941,7 @@ impl UnifiedFlowEngine {
         } else {
             error!("Failed to acquire lock for function versions during hot reload.");
         }
+        self.metrics.update_last_reload();
         info!("Function {} hot reloaded successfully.", id);
         Ok(())
     }
@@ -899,8 +950,7 @@ impl UnifiedFlowEngine {
             .read()
             .ok()?
             .get(function_id)
-            .and_then(|f| f.performance_metrics.read().ok())
-            .map(|metrics| metrics.clone())
+            .map(|f| f.performance_metrics.snapshot())
     }
     pub fn get_function_versions(&self, function_id: &str) -> Option<Vec<DynamicFunction>> {
         self.function_versions
@@ -930,14 +980,7 @@ impl UnifiedFlowEngine {
                 current_value = function.execute(&[current_value.clone()])?;
                 let execution_time = start_time.elapsed();
                 debug!("Function {} executed in {:?}", function_id, execution_time);
-                if let Ok(mut metrics) = self.metrics.write() {
-                    *metrics
-                        .function_calls
-                        .entry(function_id.clone())
-                        .or_insert(0) += 1;
-                } else {
-                    error!("Failed to update function call metrics for {}", function_id);
-                }
+                self.metrics.increment_function_call(&function_id);
             } else {
                 error!("Function {} not found in chain execution", function_id);
                 return Err(BlockError::BlockNotFound(format!(

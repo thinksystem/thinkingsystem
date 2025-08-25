@@ -181,6 +181,14 @@ impl AgentRegistry {
         self.add_to_status_index(&status, agent_id);
         self.agents.insert(agent_id.to_string(), agent);
         self.dirty = true;
+        
+        
+        
+        if self.config.persistent {
+            
+            
+            self.save_to_storage_sync()?;
+        }
         Ok(())
     }
     pub fn remove_agent(&mut self, agent_id: &str) -> Result<(), RegistryError> {

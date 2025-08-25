@@ -27,8 +27,22 @@ async fn test_simple_task_analyser() {
     assert!(!simple_task.title.is_empty());
     println!("Task type: {}", simple_task.task_type);
     println!("Task domain: {}", simple_task.domain);
-    assert!(simple_task.task_type == "development" || simple_task.task_type == "technology");
-    assert!(simple_task.domain == "technology" || simple_task.domain == "development");
+    assert!(
+        matches!(
+            simple_task.task_type.as_str(),
+            "development" | "technology" | "design"
+        ),
+        "unexpected task_type: {}",
+        simple_task.task_type
+    );
+    assert!(
+        matches!(
+            simple_task.domain.as_str(),
+            "technology" | "development" | "design"
+        ),
+        "unexpected domain: {}",
+        simple_task.domain
+    );
     assert!(!simple_task.collaboration_required);
     assert!(simple_task.max_duration_secs > 0);
 

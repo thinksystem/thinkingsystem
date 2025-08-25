@@ -32,27 +32,25 @@ use tokio::sync::RwLock;
 use tracing::info;
 use uuid::Uuid;
 
-
 fn convert_to_runtime_value(json_value: &serde_json::Value) -> RuntimeValue {
     match json_value {
         serde_json::Value::Number(n) => {
             if let Some(i) = n.as_i64() {
                 RuntimeValue::Integer(i)
             } else {
-                RuntimeValue::Integer(0) 
+                RuntimeValue::Integer(0)
             }
         }
         serde_json::Value::Bool(b) => RuntimeValue::Boolean(*b),
         serde_json::Value::String(s) => RuntimeValue::String(s.clone()),
         serde_json::Value::Null => RuntimeValue::Null,
-        _ => RuntimeValue::Null, 
+        _ => RuntimeValue::Null,
     }
 }
 
 fn convert_string_to_runtime_value(s: &str) -> RuntimeValue {
     RuntimeValue::String(s.to_string())
 }
-
 
 fn convert_from_runtime_value(runtime_value: &RuntimeValue) -> serde_json::Value {
     match runtime_value {
@@ -305,6 +303,11 @@ impl OrchestrationCoordinator {
                     timestamp: chrono::Utc::now(),
                 })
                 .await?;
+            
+            {
+                let prov = stele::provenance::context::global();
+                prov.set_session(&session_id, Some(&flow_def.id)).await;
+            }
         }
 
         let result = self.execute_session(&session_id).await;
@@ -460,6 +463,10 @@ impl OrchestrationCoordinator {
                 })
                 .await?;
         }
+        
+        stele::provenance::context::global()
+            .push_block(block_id)
+            .await;
 
         let session = {
             let active_sessions = self.active_sessions.read().await;
@@ -778,7 +785,6 @@ impl OrchestrationCoordinator {
                 }
             }
 
-            
             super::OrchestrationBlockType::ForEach {
                 loop_id,
                 array_path,
@@ -789,7 +795,6 @@ impl OrchestrationCoordinator {
                 let idx_key = format!("__loop_{loop_id}_index");
                 let arr_key = format!("__loop_{loop_id}_array");
 
-                
                 let (current_index, array_snapshot_opt, has_snapshot) = {
                     let session_guard = session.read().await;
                     let ec = session_guard.get_execution_context();
@@ -806,33 +811,29 @@ impl OrchestrationCoordinator {
                     (idx, array_val, has_snapshot)
                 };
 
-                
                 {
                     let mut session_guard = session.write().await;
                     let ec = session_guard.get_execution_context_mut();
 
-                    let next_block = if let Some(serde_json::Value::Array(arr)) = array_snapshot_opt.clone() {
-                        if !has_snapshot {
-                            
-                            ec.set_value(&arr_key, serde_json::Value::Array(arr.clone()));
-                        }
-                        if current_index < arr.len() {
-                            
-                            let item = arr[current_index].clone();
-                            ec.set_value(iterator_var, item);
-                            loop_body_block_id.clone()
+                    let next_block =
+                        if let Some(serde_json::Value::Array(arr)) = array_snapshot_opt.clone() {
+                            if !has_snapshot {
+                                ec.set_value(&arr_key, serde_json::Value::Array(arr.clone()));
+                            }
+                            if current_index < arr.len() {
+                                let item = arr[current_index].clone();
+                                ec.set_value(iterator_var, item);
+                                loop_body_block_id.clone()
+                            } else {
+                                ec.set_value(&idx_key, serde_json::Value::Null);
+                                ec.set_value(&arr_key, serde_json::Value::Null);
+                                exit_block_id.clone()
+                            }
                         } else {
-                            
                             ec.set_value(&idx_key, serde_json::Value::Null);
                             ec.set_value(&arr_key, serde_json::Value::Null);
                             exit_block_id.clone()
-                        }
-                    } else {
-                        
-                        ec.set_value(&idx_key, serde_json::Value::Null);
-                        ec.set_value(&arr_key, serde_json::Value::Null);
-                        exit_block_id.clone()
-                    };
+                        };
 
                     session_guard.set_next_block(next_block);
                 }
@@ -840,7 +841,6 @@ impl OrchestrationCoordinator {
                 ExecutionStatus::Running
             }
             super::OrchestrationBlockType::Continue { loop_id } => {
-                
                 let (foreach_block_id, idx_key) = {
                     let session_guard = session.read().await;
                     let foreach = session_guard
@@ -872,7 +872,6 @@ impl OrchestrationCoordinator {
                 ExecutionStatus::Running
             }
             super::OrchestrationBlockType::Break { loop_id } => {
-                
                 let (exit_block_id, idx_key, arr_key) = {
                     let session_guard = session.read().await;
                     let foreach = session_guard
@@ -1066,7 +1065,7 @@ impl OrchestrationCoordinator {
                     ExecutionStatus::Running
                 }
                 crate::flows::definition::BlockType::Terminate => {
-                    ExecutionStatus::Completed(RuntimeValue::Integer(0)) 
+                    ExecutionStatus::Completed(RuntimeValue::Integer(0))
                 }
                 _ => ExecutionStatus::Running,
             }

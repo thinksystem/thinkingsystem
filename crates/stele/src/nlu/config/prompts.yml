@@ -7,22 +7,22 @@ segmentation:
   system_message: |
     You are an expert text segmentation system. Your task is to break down user input into atomic, actionable units.
     Each segment should represent a single intent or operation.
-    
+
     Rules:
     - Preserve semantic meaning
-    - Identify dependencies between segments  
+    - Identify dependencies between segments
     - Assign appropriate priorities (1-100, higher = more important)
     - Classify segment types: Question, Statement, Command, Relationship
     - Extract key tokens for each segment
     - Determine metadata and context for each segment
-    
+
     Return valid JSON only in the exact format specified.
-    
+
   user_template: |
     Segment this input into atomic units:
-    
+
     Input: "{input}"
-    
+
     Required JSON format:
     {{
       "segments": [
@@ -45,7 +45,7 @@ segmentation:
         }}
       ]
     }}
-    
+
     Example:
     Input: "What is the status of project X? After that, update the timeline."
     Output:
@@ -82,12 +82,12 @@ entity_extraction:
   system_message: |
     You are an expert entity extraction system. Extract all relevant entities from the provided text.
     Focus on: people, places, organisations, temporal references, numerical values, and domain-specific entities.
-    
+
     Be precise and include confidence scores.
-    
+
   user_template: |
     Extract entities from: "{input}"
-    
+
     Return JSON format:
     {{
       "entities": [
@@ -105,12 +105,12 @@ entity_extraction:
 intent_classification:
   system_message: |
     You are an expert intent classification system. Classify the intent of the provided text segment.
-    
+
     Common intents: query, create, update, delete, relate, analyse, summarise, search
-    
+
   user_template: |
     Classify the intent of: "{input}"
-    
+
     Return JSON:
     {{
       "intent": "primary_intent",
@@ -123,11 +123,11 @@ temporal_extraction:
   system_message: |
     You are an expert temporal information extraction system. Extract all time-related information.
     Resolve relative references to absolute dates when possible.
-    
+
   user_template: |
     Extract temporal information from: "{input}"
     Current datetime: {current_time}
-    
+
     Return JSON:
     {{
       "temporal_markers": [
@@ -145,17 +145,17 @@ relationship_extraction:
   system_message: |
     You are an expert relationship extraction system. Identify relationships between entities.
     Focus on semantic relationships, not just syntactic connections.
-    
+
   user_template: |
     Extract relationships from: "{input}"
     Known entities: {entities}
-    
+
     Return JSON:
     {{
       "relationships": [
         {{
           "source": "entity1",
-          "target": "entity2", 
+          "target": "entity2",
           "relation_type": "relationship_name",
           "temporal_context": "optional_time_info",
           "confidence": 0.95,
@@ -167,10 +167,10 @@ relationship_extraction:
 numerical_extraction:
   system_message: |
     You are an expert numerical information extraction system. Extract all numerical values with their units and context.
-    
+
   user_template: |
     Extract numerical information from: "{input}"
-    
+
     Return JSON:
     {{
       "numerical_values": [
@@ -187,13 +187,13 @@ response_generation:
   system_message: |
     You are an expert response generation system. Create natural, helpful responses based on the provided context and data.
     Be conversational but informative.
-    
+
   user_template: |
     Generate a response for:
     User Query: "{input}"
     Retrieved Data: {retrieved_data}
     Extracted Information: {extracted_data}
-    
+
     Create a natural, helpful response that addresses the user's intent.
 
 # UPDATED: Complete bundled extraction prompt with proper segmentation and example
@@ -211,115 +211,107 @@ bundled_extraction:
     2.  **COMPLETE STRUCTURE:** You must provide all three main sections: `segments`, `extracted_data`, and `processing_metadata`.
     3.  **SEGMENT FIRST:** Break the input into logical segments with proper segment_type classification.
     4.  **UNIFIED GRAPH FORMAT:** Use the `nodes` and `relationships` structure. All extracted items (entities, times, numbers, actions) are "nodes".
-    5.  **USE STRING `temp_id`:** Assign a unique, descriptive string `temp_id` to each node (e.g., "entity_shoes", "location_freezer", "action_left").
+    5.  **USE STRING `temp_id`:** Assign a unique, descriptive string `temp_id` to each node (e.g., "entity_person_1", "location_place_1", "action_meet_1").
     6.  **RELATE `temp_id`s:** Use the `temp_id` strings in the `source` and `target` fields of the `relationships` array.
-    7.  **`node_type` and `data`:** Every object in the `nodes` array must have a `node_type` (e.g., "Entity", "Temporal", "Action") and a `data` object containing the specific fields for that type.
+    7.  **`node_type` and `data`:** Every object in the `nodes` array must have a `node_type` (e.g., "Entity", "Temporal", "Action", "Numerical") and a `data` object containing the specific fields for that type.
     8.  **LINK ACTIONS:** For every "Action" node, create `HAS_SUBJECT` and `HAS_OBJECT` relationships to link it to the nodes performing the action and being acted upon.
+    9.  **LOCATIONS AS ENTITIES:** Represent places/locations as `node_type: "Entity"` with `entity_type: "location"`. Do not use a separate `Location` node_type.
+    10. **STRICT NO-COPY:** Do not copy or invent any content not present in the actual Input. Do NOT reuse words from any examples or schemas; only use tokens that appear in the provided Input.
 
     ---
     Input: "{input}"
     Current datetime: {current_time}
     ---
 
-    Required JSON format and example:
+    Required JSON schema (structure only; values shown are placeholders):
     {{
       "segments": [
         {{
-          "text": "I left my shoes in the freezer",
+          "text": "...",
           "segment_type": {{
-            "Statement": {{
-              "intent": "location_report"
-            }}
+            "Question": {{"expected_answer_type": "..."}} |
+            "Statement": {{"intent": "..."}} |
+            "Command": {{"operation": "..."}} |
+            "Relationship": {{"from": "...", "to": "..."}}
           }},
           "priority": 80,
           "dependencies": [],
-          "metadata": {{
-            "domain": "personal_items",
-            "context": "unusual_storage",
-            "confidence": "0.95"
-          }},
-          "tokens": ["left", "shoes", "freezer"]
+          "metadata": {{"domain": "...", "context": "...", "confidence": "0.95"}},
+          "tokens": ["..."]
         }}
       ],
       "extracted_data": {{
         "nodes": [
           {{
-            "node_type": "Entity",
+            "node_type": "Entity|Action|Temporal|Numerical",
             "data": {{
-              "temp_id": "entity_shoes",
-              "name": "shoes",
-              "entity_type": "item",
-              "confidence": 0.98,
-              "metadata": {{
-                "category": "footwear"
-              }}
-            }}
-          }},
-          {{
-            "node_type": "Entity",
-            "data": {{
-              "temp_id": "location_freezer",
-              "name": "freezer",
-              "entity_type": "location",
+              "temp_id": "...",
+              "name|verb|date_value|value": "...",
+              "entity_type|date_type|unit": "...",
               "confidence": 0.95,
-              "metadata": {{
-                "type": "appliance",
-                "temperature": "cold"
-              }}
-            }}
-          }},
-          {{
-            "node_type": "Action",
-            "data": {{
-              "temp_id": "action_left",
-              "verb": "left",
-              "confidence": 0.92,
-              "metadata": {{
-                "tense": "past",
-                "implies_placement": true
-              }}
+              "metadata": {{}}
             }}
           }}
         ],
         "relationships": [
           {{
-            "source": "entity_shoes",
-            "target": "location_freezer",
-            "relation_type": "LOCATED_IN",
+            "source": "<temp_id>",
+            "target": "<temp_id>",
+            "relation_type": "HAS_SUBJECT|HAS_OBJECT|HAS_LOCATION|RELATES_TO|LOCATED_IN|TIMED_AT",
             "confidence": 0.9,
-            "metadata": {{
-              "unusual": true
-            }}
-          }},
-          {{
-            "source": "action_left",
-            "target": "entity_shoes",
-            "relation_type": "HAS_OBJECT",
-            "confidence": 0.91,
-            "metadata": {{}}
-          }},
-          {{
-            "source": "action_left",
-            "target": "location_freezer",
-            "relation_type": "HAS_LOCATION",
-            "confidence": 0.89,
             "metadata": {{}}
           }}
         ]
       }},
       "processing_metadata": {{
         "strategy_used": "bundled_extraction",
-        "models_used": ["claude-3-haiku"],
-        "execution_time_ms": 1200,
-        "total_cost_estimate": 0.001,
-        "confidence_scores": {{
-          "overall": 0.89,
-          "entity_extraction": 0.92,
-          "relationship_extraction": 0.85
-        }},
-        "topics": ["personal_items", "storage"],
+        "models_used": ["..."],
+        "execution_time_ms": 0,
+        "total_cost_estimate": 0.0,
+        "confidence_scores": {{"overall": 0.0}},
+        "topics": ["..."],
         "sentiment_score": 0.0
       }}
     }}
 
-    **IMPORTANT:** Focus on creating meaningful relationships that capture the semantic content. Every entity should be connected to the action and/or other entities in a way that preserves the meaning of the original text.
+    **IMPORTANT:**
+    - Focus on creating meaningful relationships that capture the semantic content.
+    - Never include any tokens that do not appear in the actual Input text.
+
+canonicalize:
+  system_message: |
+    You are an expert information extraction and canonicalization system for a knowledge graph.
+    Convert the input text into canonical records ready for upsert: canonical_entity, canonical_event, canonical_task, and canonical_relationship_fact.
+    Resolve relative times to absolute using the provided current_time. Use ner_hints only as hints; prefer evidence from the input text.
+    Your entire response must be a single valid JSON object matching the required schema exactly.
+  user_template: |
+    Input: "{input}"
+    Current datetime: {current_time}
+    NER hints (optional): {ner_hints}
+
+    Rules:
+    - Derive canonical_event only when there's an explicit or strongly implied event (e.g., meeting). Set start_at and timezone if known; otherwise leave missing.
+    - Create canonical_relationship_fact ATTENDS between person entities and events when appropriate.
+    - Treat places as canonical_entity with entity_type "location".
+    - Include confidence scores 0..1. Avoid inventing details not grounded in the input.
+    - If multiple interpretations exist, choose the most likely and set confidence accordingly.
+    - Provide a stable canonical_key when possible (e.g., hash of normalized title+start_at) to support idempotent upserts.
+
+    Required JSON schema (structure only; placeholder values):
+    {
+      "canonical_entity": [
+        { "name": "Bob", "entity_type": "person|location|org|other", "aliases": [], "canonical_key": "...", "confidence": 0.95, "metadata": {} }
+      ],
+      "canonical_event": [
+        { "title": "Meeting with Bob", "start_at": "2025-08-12T15:00:00+02:00", "end_at": null, "timezone": "Europe/Paris", "location": "Boulevard", "status": "proposed|confirmed|tentative", "canonical_key": "...", "confidence": 0.9, "metadata": {} }
+      ],
+      "canonical_task": [
+        { "title": "...", "due_at": null, "status": "open|in_progress|done", "canonical_key": "...", "confidence": 0.7, "metadata": {} }
+      ],
+      "canonical_relationship_fact": [
+        { "relation_type": "ATTENDS|LOCATED_IN|RELATES_TO", "subject_name": "Alice", "object_title_or_name": "Meeting with Bob", "confidence": 0.9, "metadata": {} }
+      ],
+      "provenance": { "input_text": "{input}", "current_time": "{current_time}" }
+    }
+
+    Respond with JSON only.

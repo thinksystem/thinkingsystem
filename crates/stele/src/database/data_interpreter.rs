@@ -155,7 +155,15 @@ impl DatabaseInterface {
         response_rx.await.map_err(|_| DatabaseError::Disconnected)?
     }
     pub async fn check_database_health(&self) -> Result<(), DatabaseError> {
-        Ok(())
+        // Use the TestQuery command to validate connectivity
+        let (response_tx, response_rx) = oneshot::channel();
+        self.command_tx
+            .send(DatabaseCommand::TestQuery {
+                response_sender: response_tx,
+            })
+            .await
+            .map_err(|_| DatabaseError::Disconnected)?;
+        response_rx.await.unwrap_or(Err(DatabaseError::Disconnected))
     }
     pub fn is_database_task_alive(&self) -> bool {
         !self.db_task_handle.is_finished()

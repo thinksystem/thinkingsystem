@@ -11,6 +11,8 @@
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
 use crate::database::query_builder::{Condition, Operator, SelectQuery};
+use crate::database::query_kg::QueryKnowledgeGraph;
+use crate::database::query_validator::QueryRules;
 use crate::database::query_validator::{QueryError, QueryNegotiator};
 use crate::database::tokens::*;
 use serde::Deserialize;
@@ -51,9 +53,15 @@ pub struct SurrealTokenParser {
 }
 impl SurrealTokenParser {
     pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let config_path = "src/database/prompts/surreal_datatypes.yml";
-        let config_str = fs::read_to_string(config_path)?;
-        let config: PromptsConfig = serde_yml::from_str(&config_str)?;
+        
+        let embedded = include_str!("./prompts/surreal_datatypes.yml");
+        let config_str = if !embedded.trim().is_empty() {
+            embedded.to_string()
+        } else {
+            let config_path = "crates/stele/src/database/prompts/surreal_datatypes.yml";
+            fs::read_to_string(config_path)?
+        };
+        let config: PromptsConfig = serde_yaml::from_str(&config_str)?;
         let prompts = config
             .prompts
             .into_iter()
@@ -68,6 +76,17 @@ impl SurrealTokenParser {
         let mut parser = Self::new().unwrap();
         parser.negotiator = Some(negotiator);
         parser
+    }
+    pub fn with_kg_hints(kg: &QueryKnowledgeGraph) -> Self {
+        let rules = QueryRules {
+            allowed_tables: Vec::new(),
+            max_conditions: 100,
+            allowed_operators: Vec::new(),
+            field_types: std::collections::HashMap::new(),
+            relationships: Vec::new(),
+        };
+        let negotiator = QueryNegotiator::new(rules).with_kg_hints(kg);
+        Self::with_negotiator(negotiator)
     }
     pub fn parse_with_validation(&mut self, input: &str) -> Result<IdiomToken, QueryError> {
         if let Some(ref negotiator) = self.negotiator {

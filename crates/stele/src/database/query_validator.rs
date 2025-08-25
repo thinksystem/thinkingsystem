@@ -11,6 +11,8 @@
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
 use crate::database::query_builder::{RelateQuery, SelectQuery};
+use crate::database::query_kg::QueryKnowledgeGraph;
+use crate::database::sanitize::sanitize_table_name;
 use crate::database::surreal_token::SurrealTokenParser;
 use crate::database::tokens::{IdiomPart, IdiomToken};
 use rayon::prelude::*;
@@ -93,6 +95,18 @@ impl QueryNegotiator {
             validator: QueryValidator::new(rules),
         }
     }
+    pub fn with_kg_hints(mut self, kg: &QueryKnowledgeGraph) -> Self {
+        let mut ops = self.rules.allowed_operators.clone();
+        for name in kg.list_operator_names() {
+            if !ops.contains(&name) {
+                ops.push(name);
+            }
+        }
+        self.rules.allowed_operators = ops;
+
+        self.validator = QueryValidator::new(self.rules.clone());
+        self
+    }
     pub fn negotiate_with_feedback<F>(
         &self,
         natural_query: &str,
@@ -163,6 +177,15 @@ impl QueryNegotiator {
                 "Processing relationship: {} -[{}]-> {} with content: {:?}",
                 relation.from, relation.edge, relation.to, relation.content
             );
+            if let Err(e) = self.validator.validate_table(&relation.from) {
+                feedback.push(format!("Invalid 'from' table '{}' in relationship: {e}", relation.from));
+            }
+            if let Err(e) = self.validator.validate_edge(&relation.edge) {
+                feedback.push(format!("Invalid edge '{}' in relationship: {e}", relation.edge));
+            }
+            if let Err(e) = self.validator.validate_table(&relation.to) {
+                feedback.push(format!("Invalid 'to' table '{}' in relationship: {e}", relation.to));
+            }
         }
 
         for intent in batch.queries {
@@ -245,7 +268,56 @@ impl QueryNegotiator {
         ))
     }
     fn get_llm_query_batch(&self, _natural_query: &str) -> Result<LlmQueryBatch, QueryError> {
-        unimplemented!()
+        let input = _natural_query.trim();
+        if input.is_empty() {
+            return Err(QueryError::InvalidQuery("Empty query".to_string()));
+        }
+
+        let mut target = None;
+        let lower = input.to_lowercase();
+        for t in &self.rules.allowed_tables {
+            if lower.contains(&t.to_lowercase()) {
+                target = Some(t.clone());
+                break;
+            }
+        }
+        let target = target.unwrap_or_else(|| {
+            self.rules
+                .allowed_tables
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "content_nodes".to_string())
+        });
+
+        let mut conditions: Vec<Condition> = Vec::new();
+        for token in lower.split(|c: char| c.is_whitespace() || c == ',') {
+            if let Some((k, v)) = token.split_once('=') {
+                let key = k.trim().to_string();
+                let val = v.trim().trim_matches('\'').trim_matches('"');
+
+                conditions.push(Condition {
+                    field: key,
+                    operator: "=".to_string(),
+                    value: serde_json::Value::String(val.to_string()),
+                });
+            }
+        }
+
+        if conditions.len() > self.rules.max_conditions as usize {
+            conditions.truncate(self.rules.max_conditions as usize);
+        }
+
+        let queries = vec![QueryIntent {
+            query_type: "select".to_string(),
+            target: target.clone(),
+            conditions,
+            expected_result: format!("basic_select_on_{target}"),
+        }];
+
+        Ok(LlmQueryBatch {
+            queries,
+            relationships: Vec::new(),
+        })
     }
     fn request_query_revision(&self, feedback: &[String]) -> Result<String, QueryError> {
         if feedback.is_empty() {
@@ -281,7 +353,28 @@ impl QueryValidator {
         Ok(())
     }
     pub fn validate_table(&self, table: &str) -> Result<(), QueryError> {
+        
+        let sanitized = sanitize_table_name(table);
+        if sanitized != table {
+            return Err(QueryError::InvalidTable);
+        }
         if self.rules.allowed_tables.contains(&table.to_string()) {
+            Ok(())
+        } else {
+            Err(QueryError::InvalidTable)
+        }
+    }
+    pub fn validate_edge(&self, edge: &str) -> Result<(), QueryError> {
+        let sanitized = sanitize_table_name(edge);
+        if sanitized != edge {
+            return Err(QueryError::InvalidTable);
+        }
+        let allowed = self
+            .rules
+            .relationships
+            .iter()
+            .any(|r| r.edge_table == edge);
+        if allowed {
             Ok(())
         } else {
             Err(QueryError::InvalidTable)

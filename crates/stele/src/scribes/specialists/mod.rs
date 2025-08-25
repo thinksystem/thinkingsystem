@@ -17,7 +17,7 @@ pub use data_scribe::DataScribe;
 pub use identity_scribe::IdentityScribe;
 pub use knowledge_scribe::KnowledgeScribe;
 pub type ScribeId = String;
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Scribe {
     Data(DataScribe),
     Knowledge(KnowledgeScribe),
@@ -29,6 +29,22 @@ impl Scribe {
             Scribe::Data(s) => s.id.clone(),
             Scribe::Knowledge(s) => s.id.clone(),
             Scribe::Identity(s) => s.id.clone(),
+        }
+    }
+}
+
+impl std::fmt::Debug for Scribe {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Scribe::Data(s) => f.debug_struct("Scribe::Data").field("id", &s.id).finish(),
+            Scribe::Knowledge(s) => f
+                .debug_struct("Scribe::Knowledge")
+                .field("id", &s.id)
+                .finish(),
+            Scribe::Identity(s) => f
+                .debug_struct("Scribe::Identity")
+                .field("id", &s.id)
+                .finish(),
         }
     }
 }

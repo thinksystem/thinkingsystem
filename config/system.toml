@@ -37,3 +37,39 @@ default_messaging_provider = "redis"
 level = "info"
 format = "json"
 output = "stdout"
+
+[data_exchange]
+# Example preconfigured providers; adjust to your environment
+providers = [
+	{ name = "self-quic", connection_type = "quic", config = { alpn = "steel/data-exchange/0" } },
+]
+
+# Canonical / extraction pipeline configuration
+[pipeline.canonicalisation]
+# Enable automatic background canonical extraction worker (can also be enabled via TS_ENABLE_CANONICAL_EXTRACT=1)
+auto = true
+# Max events to batch per extraction attempt
+batch_size = 16
+# Interval (ms) between scheduled extraction passes when events are pending
+schedule_interval_ms = 4000
+
+# Canonical database connection (optional; if set exports STELE_CANON_* to runtime)
+[canonical_db]
+url = "ws://127.0.0.1:8000"
+user = "root"
+pass = "root"
+ns = "dynamic_canon"
+db = "demo_canon"
+
+# Messaging interfaces (optional). If set, overrides corresponding env vars.
+# Telegram bot polling adapter: when enabled the supervisor polls Telegram and ingests
+# inbound messages as dynamic utterances (NLU + canonical pipeline if enabled).
+# Fields:
+#   enable        - gate for adapter (default true if block present)
+#   bot_token     - Telegram bot token (required if enable=true)
+#   poll_ms       - polling interval (default 2500ms)
+#   default_agent - reserved for future outbound routing (reply agent)
+[messaging.telegram]
+enable = true
+bot_token = "CHANGE_ME_TELEGRAM_BOT_TOKEN"
+poll_ms = 2500

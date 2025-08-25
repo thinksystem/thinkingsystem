@@ -60,6 +60,67 @@ macro_rules! get_client_from_pool {
 }
 
 impl UnifiedLLMAdapter {
+    
+    
+    pub async fn start_streaming(
+        &self,
+        request: LLMRequest,
+    ) -> LLMResult<tokio::sync::mpsc::Receiver<LLMResult<StreamChunk>>> {
+        
+        match self.generate_streaming_response(request.clone()).await {
+            Ok(rx) => Ok(rx),
+            Err(e) => {
+                warn!(error=%e, "provider streaming unavailable; degrading to legacy chunk stream");
+                let (tx, rx) = tokio::sync::mpsc::channel(32);
+                let prompt = request.prompt.clone();
+                let req_id = request.id;
+                
+                fn basic_chunk(s: &str) -> Vec<String> {
+                    let max = 120usize;
+                    if s.len() <= max {
+                        return vec![s.to_string()];
+                    }
+                    s.as_bytes()
+                        .chunks(max)
+                        .map(|c| String::from_utf8_lossy(c).to_string())
+                        .collect()
+                }
+                tokio::spawn(async move {
+                    
+                    
+                    let synthetic = format!(
+                        "[non_stream_fallback]\n{}",
+                        prompt.chars().take(400).collect::<String>()
+                    );
+                    for c in basic_chunk(&synthetic).into_iter().take(5) {
+                        if tx
+                            .send(Ok(StreamChunk {
+                                id: Uuid::new_v4(),
+                                request_id: req_id,
+                                content_delta: c,
+                                is_final: false,
+                                usage: None,
+                            }))
+                            .await
+                            .is_err()
+                        {
+                            return;
+                        }
+                    }
+                    let _ = tx
+                        .send(Ok(StreamChunk {
+                            id: Uuid::new_v4(),
+                            request_id: req_id,
+                            content_delta: String::new(),
+                            is_final: true,
+                            usage: None,
+                        }))
+                        .await;
+                });
+                Ok(rx)
+            }
+        }
+    }
     pub async fn new(model_selector: Arc<DynamicModelSelector>) -> LLMResult<Self> {
         let client_pool = Arc::new(RwLock::new(ClientPool::new().await?));
         Ok(Self {

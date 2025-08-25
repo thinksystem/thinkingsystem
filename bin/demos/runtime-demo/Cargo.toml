@@ -12,8 +12,8 @@ name = "runtime-demo"
 path = "src/main.rs"
 
 [dependencies]
-sleet = { path = "../../../crates/sleet" }
-stele = { path = "../../../crates/stele" }
+sleet = { workspace = true }
+stele = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

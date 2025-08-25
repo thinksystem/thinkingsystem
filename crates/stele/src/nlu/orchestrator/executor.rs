@@ -12,8 +12,10 @@
 
 use super::{OrchestratorError, ProcessingPlan, TaskOutput};
 use crate::nlu::llm_processor::LLMAdapter;
+use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
+use steel::messaging::insight::ner_analysis::{DetectedEntity, NerAnalyser, NerConfig};
 use tokio::time::{timeout, Duration};
 use tracing::{debug, error, info, warn};
 pub async fn execute(
@@ -31,26 +33,29 @@ pub async fn execute(
         plan.strategy_name
     );
     let strategy_name = plan.strategy_name.to_lowercase();
+    
+    let ner_hints = compute_ner_hints(input_text);
     if strategy_name.contains("bundled") {
-        execute_bundled_strategy(plan, llm_adapters, input_text).await
+        execute_bundled_strategy(plan, llm_adapters, input_text, &ner_hints).await
     } else if strategy_name.contains("parallel") {
-        execute_parallel_strategy(plan, llm_adapters, input_text).await
+        execute_parallel_strategy(plan, llm_adapters, input_text, &ner_hints).await
     } else if strategy_name.contains("staged") {
-        execute_staged_strategy(plan, llm_adapters, input_text).await
+        execute_staged_strategy(plan, llm_adapters, input_text, &ner_hints).await
     } else if strategy_name == "sequential" || strategy_name.contains("sequential") {
-        execute_sequential_strategy(plan, llm_adapters, input_text).await
+        execute_sequential_strategy(plan, llm_adapters, input_text, &ner_hints).await
     } else {
         info!(
             "Using default batched execution for strategy: {}",
             plan.strategy_name
         );
-        execute_batched(plan, llm_adapters, input_text).await
+        execute_batched(plan, llm_adapters, input_text, &ner_hints).await
     }
 }
 async fn execute_sequential_strategy(
     plan: &ProcessingPlan,
     llm_adapters: &HashMap<String, Arc<dyn LLMAdapter + Send + Sync>>,
     input_text: &str,
+    ner_hints: &str,
 ) -> Result<Vec<TaskOutput>, OrchestratorError> {
     let mut results = Vec::new();
     for task in &plan.tasks {
@@ -69,7 +74,7 @@ async fn execute_sequential_strategy(
             Some(task_input) => task_input.as_str(),
             None => input_text,
         };
-        let result = execute_single_task(task, adapter, actual_input).await;
+        let result = execute_single_task(task, adapter, actual_input, ner_hints).await;
         results.push(result);
     }
     info!(
@@ -82,20 +87,23 @@ async fn execute_bundled_strategy(
     plan: &ProcessingPlan,
     llm_adapters: &HashMap<String, Arc<dyn LLMAdapter + Send + Sync>>,
     input_text: &str,
+    ner_hints: &str,
 ) -> Result<Vec<TaskOutput>, OrchestratorError> {
-    execute_batched(plan, llm_adapters, input_text).await
+    execute_batched(plan, llm_adapters, input_text, ner_hints).await
 }
 async fn execute_parallel_strategy(
     plan: &ProcessingPlan,
     llm_adapters: &HashMap<String, Arc<dyn LLMAdapter + Send + Sync>>,
     input_text: &str,
+    ner_hints: &str,
 ) -> Result<Vec<TaskOutput>, OrchestratorError> {
-    execute_batched(plan, llm_adapters, input_text).await
+    execute_batched(plan, llm_adapters, input_text, ner_hints).await
 }
 async fn execute_staged_strategy(
     plan: &ProcessingPlan,
     llm_adapters: &HashMap<String, Arc<dyn LLMAdapter + Send + Sync>>,
     input_text: &str,
+    ner_hints: &str,
 ) -> Result<Vec<TaskOutput>, OrchestratorError> {
     validate_dependencies(plan)?;
 
@@ -128,7 +136,7 @@ async fn execute_staged_strategy(
                     }
                 };
                 let actual_input = task.input_data.as_ref().unwrap_or(&input_text_clone);
-                let future = execute_single_task(task, adapter, actual_input);
+                let future = execute_single_task(task, adapter, actual_input, ner_hints);
                 stage_futures.push(future);
             }
         }
@@ -148,6 +156,7 @@ async fn execute_batched(
     plan: &ProcessingPlan,
     llm_adapters: &HashMap<String, Arc<dyn LLMAdapter + Send + Sync>>,
     input_text: &str,
+    ner_hints: &str,
 ) -> Result<Vec<TaskOutput>, OrchestratorError> {
     let mut results = Vec::new();
     let input_text_clone = input_text.to_string();
@@ -164,7 +173,7 @@ async fn execute_batched(
                     }
                 };
                 let actual_input = task.input_data.as_ref().unwrap_or(&input_text_clone);
-                let future = execute_single_task(task, adapter, actual_input);
+                let future = execute_single_task(task, adapter, actual_input, ner_hints);
                 batch_futures.push(future);
             }
         }
@@ -178,13 +187,14 @@ async fn execute_single_task(
     task: &super::planner::PlannedTask,
     adapter: &Arc<dyn LLMAdapter + Send + Sync>,
     input_text: &str,
+    ner_hints: &str,
 ) -> TaskOutput {
     let start_time = std::time::Instant::now();
     debug!(
         "Executing task: {} with model: {}",
         task.id, task.model_name
     );
-    let prompt = task.prompt_template.replace("{input}", input_text);
+    let prompt = compose_prompt(&task.prompt_template, input_text, ner_hints);
     let execution_result =
         timeout(task.timeout, async { adapter.process_text(&prompt).await }).await;
     let execution_time = start_time.elapsed();
@@ -245,6 +255,42 @@ async fn execute_single_task(
         }
     }
 }
+
+fn compose_prompt(template: &str, input: &str, ner_hints: &str) -> String {
+    let mut prompt = template.replace("{input}", input);
+    let now = Utc::now().to_rfc3339();
+    prompt = prompt.replace("{current_time}", &now);
+    prompt = prompt.replace("{ner_hints}", ner_hints);
+    prompt
+}
+
+fn compute_ner_hints(input_text: &str) -> String {
+    
+    let enabled = std::env::var("STELE_ENABLE_NER_HINTS")
+        .ok()
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    if !enabled {
+        return "[]".to_string();
+    }
+    let mut analyser = NerAnalyser::new(NerConfig::default());
+    match analyser.analyse_text(input_text) {
+        Ok(result) => {
+            let filtered: Vec<&DetectedEntity> = result
+                .entities
+                .iter()
+                .filter(|e| {
+                    matches!(
+                        e.label.to_lowercase().as_str(),
+                        "person" | "location" | "date"
+                    )
+                })
+                .collect();
+            serde_json::to_string(&filtered).unwrap_or_else(|_| "[]".to_string())
+        }
+        Err(_) => "[]".to_string(),
+    }
+}
 fn find_adapter_for_model<'a>(
     model_name: &str,
     adapters: &'a HashMap<String, Arc<dyn LLMAdapter + Send + Sync>>,
@@ -284,6 +330,18 @@ fn parse_task_response(
         println!("DEBUG: Raw bundled extraction response: {response}");
     }
     if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(response) {
+        println!(
+            "DEBUG: Direct JSON parse success for task_type '{}' (top-level type: {})",
+            task_type,
+            match &json_value {
+                serde_json::Value::Object(_) => "object",
+                serde_json::Value::Array(_) => "array",
+                serde_json::Value::String(_) => "string",
+                serde_json::Value::Number(_) => "number",
+                serde_json::Value::Bool(_) => "bool",
+                serde_json::Value::Null => "null",
+            }
+        );
         if task_type == "bundled" || task_type == "bundled_extraction" {
             println!(
                 "DEBUG: Bundled extraction parsed JSON: {}",
@@ -304,17 +362,49 @@ fn parse_task_response(
             "DEBUG: Extracted JSON content length: {}",
             json_content.len()
         );
-        if let Ok(parsed_json) = serde_json::from_str::<serde_json::Value>(&json_content) {
-            info!("Successfully extracted and parsed JSON from response text");
-            return Ok(parsed_json);
-        } else {
-            println!(
-                "DEBUG: Extracted content failed JSON parsing: {}",
-                json_content.chars().take(500).collect::<String>()
-            );
-
-            if let Err(e) = serde_json::from_str::<serde_json::Value>(&json_content) {
+        match serde_json::from_str::<serde_json::Value>(&json_content) {
+            Ok(parsed_json) => {
+                info!("Successfully extracted and parsed JSON from response text");
+                return Ok(parsed_json);
+            }
+            Err(e) => {
+                println!(
+                    "DEBUG: Extracted content failed JSON parsing (initial): {}",
+                    json_content.chars().take(500).collect::<String>()
+                );
                 println!("DEBUG: JSON parsing error: {e}");
+
+                // Attempt salvage if the JSON looks truncated
+                if looks_truncated(&json_content) {
+                    if let Some(salvaged) = salvage_truncated_json(&json_content) {
+                        println!(
+                            "DEBUG: Salvaged truncated JSON (len {} -> {})",
+                            json_content.len(),
+                            salvaged.len()
+                        );
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&salvaged) {
+                            println!(
+                                "DEBUG: Salvage JSON parse success for task_type '{}' (salvaged length {}, top-level type: {})",
+                                task_type,
+                                salvaged.len(),
+                                match &parsed {
+                                    serde_json::Value::Object(_) => "object",
+                                    serde_json::Value::Array(_) => "array",
+                                    serde_json::Value::String(_) => "string",
+                                    serde_json::Value::Number(_) => "number",
+                                    serde_json::Value::Bool(_) => "bool",
+                                    serde_json::Value::Null => "null",
+                                }
+                            );
+                            info!("Successfully parsed salvaged truncated JSON");
+                            return Ok(parsed);
+                        } else {
+                            println!("DEBUG: Salvage attempt still not valid JSON");
+                        }
+                    } else {
+                        println!("DEBUG: No salvageable truncated JSON structure identified");
+                    }
+                }
             }
         }
     }
@@ -575,6 +665,109 @@ fn fix_common_json_errors(json: &str) -> String {
     }
 
     fixed
+}
+
+// Heuristic: detect if JSON likely truncated mid-string/object/array by imbalance of braces/brackets or dangling quotes.
+fn looks_truncated(s: &str) -> bool {
+    let mut brace = 0i32;
+    let mut bracket = 0i32;
+    let mut in_string = false;
+    let mut escape = false;
+    for c in s.chars() {
+        if in_string {
+            if escape {
+                escape = false;
+            } else if c == '\\' {
+                // escape next
+                escape = true;
+            } else if c == '"' {
+                in_string = false;
+            }
+            continue;
+        } else if c == '"' {
+            in_string = true;
+            continue;
+        }
+        match c {
+            '{' => brace += 1,
+            '}' => brace -= 1,
+            '[' => bracket += 1,
+            ']' => bracket -= 1,
+            _ => {}
+        }
+    }
+    // If we're still inside a string or unmatched containers remain positive, and the text does not properly end with } or ]
+    in_string || brace > 0 || bracket > 0 || !s.trim_end().ends_with(['}', ']'])
+}
+
+
+fn salvage_truncated_json(s: &str) -> Option<String> {
+    let mut result = String::with_capacity(s.len() + 16);
+    result.push_str(s);
+
+    
+    let mut in_string = false;
+    let mut escape = false;
+    for c in s.chars() {
+        if in_string {
+            if escape {
+                escape = false;
+            } else if c == '\\' {
+                escape = true;
+            } else if c == '"' {
+                in_string = false;
+            }
+        } else if c == '"' {
+            in_string = true;
+        }
+    }
+    if in_string {
+        result.push('"');
+    }
+
+    
+    let mut brace = 0i32;
+    let mut bracket = 0i32;
+    let mut in_string2 = false;
+    let mut escape2 = false;
+    for c in result.chars() {
+        if in_string2 {
+            if escape2 {
+                escape2 = false;
+            } else if c == '\\' {
+                escape2 = true;
+            } else if c == '"' {
+                in_string2 = false;
+            }
+            continue;
+        } else if c == '"' {
+            in_string2 = true;
+            continue;
+        }
+        match c {
+            '{' => brace += 1,
+            '}' => brace -= 1,
+            '[' => bracket += 1,
+            ']' => bracket -= 1,
+            _ => {}
+        }
+    }
+
+    while brace > 0 {
+        result.push('}');
+        brace -= 1;
+    }
+    while bracket > 0 {
+        result.push(']');
+        bracket -= 1;
+    }
+
+    
+    if serde_json::from_str::<serde_json::Value>(&result).is_ok() {
+        Some(result)
+    } else {
+        None
+    }
 }
 fn validate_dependencies(plan: &ProcessingPlan) -> Result<(), OrchestratorError> {
     let task_ids: std::collections::HashSet<String> =

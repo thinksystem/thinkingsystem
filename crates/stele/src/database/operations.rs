@@ -10,6 +10,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
+use crate::database::query_kg::QueryKgBuilder;
+use crate::database::query_metrics::{
+    snapshot_top_by_count, snapshot_top_by_total, QueryMetricsSnapshot,
+};
+use crate::database::regulariser::Regulariser;
+use crate::database::structured_store::StructuredStore;
 use crate::database::types::DatabaseError;
 use crate::nlu::orchestrator::data_models::{
     ExtractedData, InputSegment, KnowledgeNode, Relationship, UnifiedNLUData,
@@ -28,6 +34,10 @@ pub struct DatabaseOperations {
 impl DatabaseOperations {
     pub fn new(connection: Arc<Surreal<Client>>) -> Self {
         Self { connection }
+    }
+
+    pub fn snapshot_query_metrics(&self) -> QueryMetricsSnapshot {
+        (snapshot_top_by_count(10), snapshot_top_by_total(10))
     }
     pub async fn store_unified_nlu_data(
         &self,
@@ -69,6 +79,63 @@ impl DatabaseOperations {
             .await?;
         self.store_segments(&data.segments, &utterance_record_id)
             .await?;
+
+        if let Some(db_arc) = Arc::downgrade(&self.connection).upgrade() {
+            
+            let canon_env_ready = std::env::var("STELE_CANON_URL").is_ok()
+                && std::env::var("STELE_CANON_USER").is_ok()
+                && std::env::var("STELE_CANON_PASS").is_ok()
+                && std::env::var("STELE_CANON_NS").is_ok()
+                && std::env::var("STELE_CANON_DB").is_ok();
+
+            if canon_env_ready {
+                let canonical_client = match StructuredStore::connect_canonical_from_env().await {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::warn!(error = %e, "Canonical DB not available; skipping regulariser");
+                        db_arc.clone()
+                    }
+                };
+
+                
+                let d_url = std::env::var("SURREALDB_URL").unwrap_or_default();
+                let d_ns = std::env::var("SURREALDB_NS").unwrap_or_default();
+                let d_db = std::env::var("SURREALDB_DB").unwrap_or_default();
+                let c_url = std::env::var("STELE_CANON_URL").unwrap_or_default();
+                let c_ns = std::env::var("STELE_CANON_NS").unwrap_or_default();
+                let c_db = std::env::var("STELE_CANON_DB").unwrap_or_default();
+                let same_database = d_url == c_url && d_ns == c_ns && d_db == c_db;
+
+                if same_database {
+                    tracing::warn!(
+                        "Canonical and dynamic DB point to the same namespace/db; expected separate namespaces"
+                    );
+                }
+
+                let store = StructuredStore::new_with_clients(
+                    canonical_client,
+                    db_arc.clone(),
+                    same_database,
+                );
+                let regulariser = Regulariser::new(store);
+                let extracted = data.extracted_data.clone();
+                tokio::spawn(async move {
+                    if let Ok(outcome) = regulariser.regularise_extracted_data(&extracted).await {
+                        tracing::info!(
+                            entities = outcome.entity_ids.len(),
+                            tasks = outcome.task_ids.len(),
+                            events = outcome.event_ids.len(),
+                            facts = outcome.relationship_fact_ids.len(),
+                            "Regulariser completed (operations path)"
+                        );
+                    }
+                });
+            } else {
+                tracing::info!(
+                    "Canonical DB env not set (STELE_CANON_*); skipping regulariser run"
+                );
+            }
+        }
         println!("✅ Stored unified NLU data with utterance ID: {utterance_record_id}");
         Ok(utterance_record_id)
     }
@@ -136,7 +203,7 @@ impl DatabaseOperations {
         utterance_id: &str,
     ) -> Result<String, DatabaseError> {
         let query = format!(
-            "RELATE {source_id}->edges->{target_id} SET label = $label, properties = $properties"
+            "RELATE {source_id}->edges->{target_id} SET label = $label, properties = $properties RETURN AFTER"
         );
         let properties = serde_json::json!({
             "confidence": relationship.confidence,
@@ -172,22 +239,28 @@ impl DatabaseOperations {
         if segments.is_empty() {
             return Ok(());
         }
-        let mut transaction_query = "BEGIN TRANSACTION;".to_string();
-        for segment in segments.iter() {
-            let segment_id = format!("segment:{}", Uuid::new_v4());
-            let segment_json = serde_json::to_string(segment).unwrap_or_else(|_| "{}".to_string());
-            let create_query = format!("CREATE {segment_id} CONTENT {segment_json};");
-            transaction_query.push_str(&create_query);
-            let relate_query = format!("RELATE {utterance_id}->HAS_SEGMENT->{segment_id};");
-            transaction_query.push_str(&relate_query);
+        
+        
+        let mut q = String::from("BEGIN TRANSACTION; ");
+        let mut binds: Vec<(String, serde_json::Value)> = Vec::new();
+        for (i, segment) in segments.iter().enumerate() {
+            let seg_id = format!("segment:{}", Uuid::new_v4());
+            let var_name = format!("seg_json_{i}");
+            q.push_str(&format!("CREATE {seg_id} CONTENT ${var_name}; "));
+            q.push_str(&format!("RELATE {utterance_id}->HAS_SEGMENT->{seg_id}; "));
+            binds.push((
+                var_name,
+                serde_json::to_value(segment).unwrap_or(serde_json::json!({})),
+            ));
         }
-        transaction_query.push_str("COMMIT TRANSACTION;");
-        self.connection
-            .query(&transaction_query)
-            .await
-            .map_err(|e| {
-                DatabaseError::Query(format!("Failed to commit segments transaction: {e}"))
-            })?;
+        q.push_str("COMMIT TRANSACTION;");
+        let mut dbq = self.connection.query(&q);
+        for (k, v) in binds {
+            dbq = dbq.bind((k, v));
+        }
+        dbq.await.map_err(|e| {
+            DatabaseError::Query(format!("Failed to commit segments transaction: {e}"))
+        })?;
         Ok(())
     }
     async fn create_extraction_relationship(
@@ -215,9 +288,19 @@ impl DatabaseOperations {
                 }
             }
         }
+        let start = std::time::Instant::now();
         let mut result = db_query
             .await
             .map_err(|e| DatabaseError::Query(format!("Transaction failed: {e}")))?;
+        let elapsed = start.elapsed();
+        if elapsed.as_millis() > 250 {
+            
+            tracing::info!(
+                "slow_query.tx elapsed_ms={} text_len={}",
+                elapsed.as_millis(),
+                query.len()
+            );
+        }
         let data: Vec<Value> = result.take(0).unwrap_or_else(|_| vec![]);
         Ok(serde_json::json!({
             "success": true,
@@ -233,11 +316,20 @@ impl DatabaseOperations {
         Ok(())
     }
     pub async fn execute_query(&self, query: &str) -> Result<Value, DatabaseError> {
+        let start = std::time::Instant::now();
         let mut result = self
             .connection
             .query(query)
             .await
             .map_err(|e| DatabaseError::Query(format!("Query failed: {e}")))?;
+        let elapsed = start.elapsed();
+        if elapsed.as_millis() > 250 {
+            tracing::info!(
+                "slow_query.raw elapsed_ms={} text_len={}",
+                elapsed.as_millis(),
+                query.len()
+            );
+        }
         let data: Vec<Value> = result.take(0).unwrap_or_else(|_| vec![]);
         Ok(serde_json::json!({
             "success": true,
@@ -250,24 +342,21 @@ impl DatabaseOperations {
             ("connection_test", "SELECT 1 as test"),
             (
                 "entity_nodes_count",
-                "SELECT count() FROM entity_nodes GROUP ALL",
+                "SELECT count() FROM nodes WHERE type = 'Entity' GROUP ALL",
             ),
             (
                 "action_nodes_count",
-                "SELECT count() FROM action_nodes GROUP ALL",
+                "SELECT count() FROM nodes WHERE type = 'Action' GROUP ALL",
             ),
             (
                 "temporal_nodes_count",
-                "SELECT count() FROM temporal_nodes GROUP ALL",
+                "SELECT count() FROM nodes WHERE type = 'Temporal' GROUP ALL",
             ),
             (
                 "numerical_nodes_count",
-                "SELECT count() FROM numerical_nodes GROUP ALL",
+                "SELECT count() FROM nodes WHERE type = 'Numerical' GROUP ALL",
             ),
-            (
-                "relationships_count",
-                "SELECT count() FROM relationships GROUP ALL",
-            ),
+            ("relationships_count", "SELECT count() FROM edges GROUP ALL"),
             (
                 "utterances_count",
                 "SELECT count() FROM utterance GROUP ALL",
@@ -387,6 +476,45 @@ impl DatabaseOperations {
         );
         Ok(Value::Object(stats))
     }
+
+    
+    
+    pub async fn run_parsing_coverage_analysis(
+        &self,
+        docs_path: Option<&str>,
+        out_path: Option<&str>,
+    ) -> Result<Value, DatabaseError> {
+        let root = docs_path.unwrap_or("crates/stele/src/database/instructions");
+        let out = out_path.unwrap_or("parsing_analysis.json");
+        let builder = QueryKgBuilder::new(root);
+        let kg = builder
+            .build_and_save_analysis(out)
+            .map_err(|e| DatabaseError::Query(format!("KG build/analysis failed: {e}")))?;
+        let reg = &kg.parsing_registry;
+        Ok(serde_json::json!({
+            "docs_path": root,
+            "out_path": out,
+            "ast": {
+                "total": reg.ast_total_examples,
+                "success": reg.ast_successful_parses,
+                "fail": reg.ast_failed_parses,
+                "rate": reg.ast_success_rate,
+            },
+            "idiom": {
+                "total": reg.idiom_total_examples,
+                "success": reg.idiom_successful_parses,
+                "fail": reg.idiom_failed_parses,
+                "rate": reg.idiom_success_rate,
+            },
+            "operators": {
+                "total": reg.total_examples,
+                "success": reg.successful_parses,
+                "fail": reg.failed_parses,
+                "rate": reg.success_rate,
+            },
+            "deltas_count": reg.deltas.len()
+        }))
+    }
     pub async fn get_utterance_breakdown(
         &self,
         utterance_id: &str,
@@ -487,11 +615,15 @@ impl DatabaseOperations {
     }
     pub async fn get_extraction_statistics(&self) -> Result<Value, DatabaseError> {
         let mut stats = serde_json::Map::new();
-        match self.connection.query(
-            "SELECT properties.entity_type, count() as count, avg(properties.confidence) as avg_confidence
-             FROM entity_nodes
-             GROUP BY properties.entity_type"
-        ).await {
+        match self
+            .connection
+            .query(
+                "SELECT properties.entity_type, count() as count, avg(properties.confidence) as avg_confidence
+                 FROM nodes WHERE type = 'Entity'
+                 GROUP BY properties.entity_type",
+            )
+            .await
+        {
             Ok(mut result) => {
                 let entity_stats: Vec<Value> = result.take(0).unwrap_or_default();
                 stats.insert("entity_stats".to_string(), serde_json::json!(entity_stats));
@@ -500,11 +632,15 @@ impl DatabaseOperations {
                 stats.insert("entity_stats".to_string(), serde_json::json!([]));
             }
         }
-        match self.connection.query(
-            "SELECT properties.verb, count() as count, avg(properties.confidence) as avg_confidence
-             FROM action_nodes
-             GROUP BY properties.verb"
-        ).await {
+        match self
+            .connection
+            .query(
+                "SELECT properties.verb, count() as count, avg(properties.confidence) as avg_confidence
+                 FROM nodes WHERE type = 'Action'
+                 GROUP BY properties.verb",
+            )
+            .await
+        {
             Ok(mut result) => {
                 let action_stats: Vec<Value> = result.take(0).unwrap_or_default();
                 stats.insert("action_stats".to_string(), serde_json::json!(action_stats));
@@ -513,15 +649,11 @@ impl DatabaseOperations {
                 stats.insert("action_stats".to_string(), serde_json::json!([]));
             }
         }
-        match self
-            .connection
-            .query(
-                "SELECT relation_type, count() as count, avg(confidence) as avg_confidence
-             FROM relationships
-             GROUP BY relation_type",
-            )
-            .await
-        {
+        match self.connection.query(
+            "SELECT label as relation_type, count() as count, avg(properties.confidence) as avg_confidence
+             FROM edges
+             GROUP BY label"
+        ).await {
             Ok(mut result) => {
                 let relationship_stats: Vec<Value> = result.take(0).unwrap_or_default();
                 stats.insert(

@@ -4,14 +4,14 @@
 # Single policy that always uses bundled extraction
 
 policies:
-  - name: test_bundled_extraction
+  - name: canonicalize_first
     priority: 100
-    description: "Always use bundled extraction for testing"
-    conditions: {} # No conditions - this will match everything
+    description: "Prefer single-pass canonicalization"
+    conditions: {}
     strategy:
       type: parallel
       actions:
-        - task: bundled_extraction
+        - task: canonicalize
           model_capability: full_extraction
           priority: 1
       stages: []
@@ -24,6 +24,7 @@ global_settings:
 
 # Task definitions - only keep what we need
 tasks:
-  bundled_extraction:
-    description: "Extract multiple data types in one call"
-    required_capabilities: ["extraction", "reasoning", "full_extraction", "fast_extraction"]
+  canonicalize:
+    description: "Single-pass canonical records extraction"
+    required_capabilities:
+      ["extraction", "reasoning", "full_extraction", "fast_extraction"]

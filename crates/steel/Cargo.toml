@@ -50,6 +50,7 @@ futures.workspace = true
 reqwest.workspace = true
 axum.workspace = true
 iroh.workspace = true
+tokio-util.workspace = true
 
 # Messaging dependencies
 aes-gcm.workspace = true

@@ -33,10 +33,11 @@ pub struct KnowledgeNodeAdapter;
 impl KnowledgeNodeAdapter {
     pub fn from_database_record(record_value: Value) -> Result<KnowledgeNode, AdapterError> {
         let record_obj = record_value.as_object().ok_or(AdapterError::NotAnObject)?;
-        let node_type = record_obj
+    let node_type = record_obj
             .get("type")
             .and_then(Value::as_str)
             .ok_or(AdapterError::MissingTypeField)?;
+    let node_type_lc = node_type.to_lowercase();
         let mut properties = record_obj
             .get("properties")
             .cloned()
@@ -46,7 +47,7 @@ impl KnowledgeNodeAdapter {
             .and_then(Value::as_str)
             .unwrap_or("")
             .to_string();
-        match node_type {
+    match node_type_lc.as_str() {
             "temporal" => {
                 if let Value::Object(ref mut props_obj) = properties {
                     props_obj.insert("temp_id".to_string(), Value::String(temp_id.clone()));

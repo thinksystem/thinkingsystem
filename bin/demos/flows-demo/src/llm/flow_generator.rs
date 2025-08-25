@@ -70,7 +70,7 @@ impl LLMFlowGenerator {
                 system_prompt: None,
                 model_requirements: ModelRequirements {
                     capabilities: vec![
-                        // Put the unique capability first; selector uses the first capability
+                        
                         "anthropic_flow".to_string(),
                         "reasoning".to_string(),
                     ],

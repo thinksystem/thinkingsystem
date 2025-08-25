@@ -181,6 +181,11 @@ struct MetaLearningStats {
     avg_reward: f32,
     td_error_history: VecDeque<f32>,
     learning_rate_history: VecDeque<f32>,
+    
+    total_attempted_items: u64,
+    total_applied_items: u64,
+    partial_apply_events: u64,
+    backoff_events: u64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Goal {
@@ -434,6 +439,80 @@ impl QLearningCore {
             "active_eligibility_traces".to_string(),
             self.eligibility_traces.len() as f32,
         );
+        
+        let attempted = self.meta_stats.total_attempted_items as f32;
+        let applied = self.meta_stats.total_applied_items as f32;
+        let success_ratio = if attempted > 0.0 {
+            applied / attempted
+        } else {
+            0.0
+        };
+        metrics.insert("apply_attempted".to_string(), attempted);
+        metrics.insert("apply_applied".to_string(), applied);
+        metrics.insert("apply_success_ratio".to_string(), success_ratio);
+        metrics.insert(
+            "apply_partial_events".to_string(),
+            self.meta_stats.partial_apply_events as f32,
+        );
+        metrics.insert(
+            "apply_backoff_events".to_string(),
+            self.meta_stats.backoff_events as f32,
+        );
         metrics
+    }
+
+    
+    
+    
+    pub fn record_apply_outcome(
+        &mut self,
+        attempted: usize,
+        applied: usize,
+        backoffs: usize,
+    ) -> f32 {
+        let attempted_u64 = attempted as u64;
+        let applied_u64 = applied as u64;
+        let partial = applied > 0 && applied < attempted;
+        let success_ratio = if attempted > 0 {
+            applied as f32 / attempted as f32
+        } else {
+            0.0
+        };
+
+        
+        self.meta_stats.total_attempted_items = self
+            .meta_stats
+            .total_attempted_items
+            .saturating_add(attempted_u64);
+        self.meta_stats.total_applied_items = self
+            .meta_stats
+            .total_applied_items
+            .saturating_add(applied_u64);
+        if partial {
+            self.meta_stats.partial_apply_events =
+                self.meta_stats.partial_apply_events.saturating_add(1);
+        }
+        if backoffs > 0 {
+            self.meta_stats.backoff_events = self
+                .meta_stats
+                .backoff_events
+                .saturating_add(backoffs as u64);
+        }
+
+        
+        let mut shaped = success_ratio;
+        if attempted > 0 && applied == 0 {
+            shaped -= 1.0; 
+        }
+        shaped -= 0.1 * (backoffs as f32);
+
+        
+        let target_exploration = (1.0 - success_ratio).clamp(MIN_EXPLORATION_RATE, 1.0);
+        
+        let alpha = 0.2;
+        let new_rate = self.exploration_rate + alpha * (target_exploration - self.exploration_rate);
+        self.set_modulated_exploration_rate(new_rate);
+
+        shaped
     }
 }

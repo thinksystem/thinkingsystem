@@ -201,6 +201,7 @@ impl ComputeBlock {
             || expr.contains(" - ")
             || expr.contains(" * ")
             || expr.contains(" / ")
+            || expr.contains(" % ")
             || expr.contains("state.")
             || expr.contains('(')
             || expr.contains(')')

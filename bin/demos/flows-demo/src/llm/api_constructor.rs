@@ -72,7 +72,7 @@ impl IntelligentAPIConstructor {
             system_prompt: None,
             model_requirements: ModelRequirements {
                 capabilities: vec![
-                    // Prefer Anthropic capability for analysis
+                    
                     "anthropic_flow".to_string(),
                     "reasoning".to_string(),
                 ],
@@ -133,7 +133,7 @@ impl IntelligentAPIConstructor {
             system_prompt: None,
             model_requirements: ModelRequirements {
                 capabilities: vec![
-                    // Prefer Anthropic capability for plan construction
+                    
                     "anthropic_flow".to_string(),
                     "reasoning".to_string(),
                 ],

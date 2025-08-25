@@ -12,7 +12,8 @@
 
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
-use surrealdb::sql::Value;
+
+use crate::database::sanitize::sanitize_table_name;
 use surrealdb::{engine::remote::ws::Client, Surreal};
 use thiserror::Error;
 use tokio::fs;
@@ -149,7 +150,8 @@ impl GraphSchemaAnalyser {
         table_name: &str,
         schema: &mut GraphSchema,
     ) -> Result<(), SchemaAnalyserError> {
-        let mut response = db.query(format!("INFO FOR TABLE {table_name};")).await?;
+        let t = sanitize_table_name(table_name);
+        let mut response = db.query(format!("INFO FOR TABLE {t};")).await?;
         let table_info: Option<serde_json::Value> = response.take(0)?;
         if let Some(serde_json::Value::Object(info)) = table_info {
             let mut fields = HashMap::new();
@@ -201,16 +203,13 @@ impl GraphSchemaAnalyser {
                 }
             }
             let is_schemaless = fields.is_empty();
-            let table_type = if table_name == "edges"
-                || table_name.starts_with("has_")
-                || table_name.ends_with("_from")
-            {
+            let table_type = if t == "edges" || t.starts_with("has_") || t.ends_with("_from") {
                 TableType::Relation
             } else {
                 TableType::Normal
             };
             schema.tables.insert(
-                table_name.to_string(),
+                t.to_string(),
                 TableSchema {
                     table_type,
                     is_schemaless,
@@ -229,13 +228,14 @@ impl GraphSchemaAnalyser {
     ) -> Result<(), SchemaAnalyserError> {
         for (table_name, table_schema) in schema.tables.iter_mut() {
             if table_schema.is_schemaless {
-                let query = format!("SELECT properties FROM {table_name} LIMIT 100");
+                let t = sanitize_table_name(table_name);
+                let query = format!("SELECT properties FROM {t} LIMIT 100");
                 let mut response = db.query(&query).await?;
-                let results: Vec<Value> = response.take(0)?;
+                let results: Vec<serde_json::Value> = response.take(0)?;
                 let mut property_keys = HashMap::new();
                 for result in results {
-                    if let Value::Object(obj) = result {
-                        if let Some(Value::Object(props)) = obj.get("properties") {
+                    if let serde_json::Value::Object(obj) = result {
+                        if let Some(serde_json::Value::Object(props)) = obj.get("properties") {
                             for key in props.keys() {
                                 property_keys
                                     .entry("properties".to_string())

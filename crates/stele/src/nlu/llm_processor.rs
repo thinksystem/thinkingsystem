@@ -12,6 +12,7 @@
 
 use async_trait::async_trait;
 use dotenvy::dotenv;
+use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -39,6 +40,7 @@ pub struct LLMProcessor {
     config: ConversationConfig,
     conversation_history: Vec<String>,
 }
+static HTTP_CLIENT: Lazy<Client> = Lazy::new(|| Client::builder().build().expect("HTTP client"));
 
 impl LLMProcessor {
     pub fn new(adapter: Box<dyn LLMAdapter>, config: ConversationConfig) -> Self {
@@ -108,9 +110,9 @@ impl CustomLLMAdapter {
             model: std::env::var("ANTHROPIC_MODEL")
                 .unwrap_or_else(|_| "claude-3-5-haiku-latest".to_string()),
             max_tokens: std::env::var("ANTHROPIC_MAX_TOKENS")
-                .unwrap_or_else(|_| "8192".to_string())
+                .unwrap_or_else(|_| "50000".to_string())
                 .parse()
-                .unwrap_or(8192),
+                .unwrap_or(50000),
             temperature: std::env::var("ANTHROPIC_TEMPERATURE")
                 .unwrap_or_else(|_| "0.7".to_string())
                 .parse()
@@ -129,9 +131,9 @@ impl CustomLLMAdapter {
             api_key: "".to_string(),
             model,
             max_tokens: std::env::var("OLLAMA_MAX_TOKENS")
-                .unwrap_or_else(|_| "4096".to_string())
+                .unwrap_or_else(|_| "32768".to_string())
                 .parse()
-                .unwrap_or(4096),
+                .unwrap_or(32768),
             temperature: std::env::var("OLLAMA_TEMPERATURE")
                 .unwrap_or_else(|_| "0.7".to_string())
                 .parse()
@@ -162,9 +164,9 @@ impl Default for CustomLLMAdapter {
             model: std::env::var("ANTHROPIC_MODEL")
                 .unwrap_or_else(|_| "claude-3-5-haiku-latest".to_string()),
             max_tokens: std::env::var("ANTHROPIC_MAX_TOKENS")
-                .unwrap_or_else(|_| "8192".to_string())
+                .unwrap_or_else(|_| "50000".to_string())
                 .parse()
-                .unwrap_or(8192),
+                .unwrap_or(50000),
             temperature: std::env::var("ANTHROPIC_TEMPERATURE")
                 .unwrap_or_else(|_| "0.2".to_string())
                 .parse()
@@ -252,7 +254,7 @@ pub async fn generate_chat_response(
 #[async_trait]
 impl LLMAdapter for CustomLLMAdapter {
     async fn process_text(&self, input: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let client = Client::new();
+        let client = &*HTTP_CLIENT;
         let provider = self.get_provider();
 
         let response = match provider {
@@ -277,13 +279,32 @@ impl LLMAdapter for CustomLLMAdapter {
                     .await?
             }
             "ollama" => {
+                
+                let mut num_predict = self.max_tokens;
+                let lower = input.to_ascii_lowercase();
+                let likely_json = lower.contains("return json")
+                    || lower.contains("respond with json")
+                    || lower.contains("re-emit strictly")
+                    || lower.contains("structured response")
+                    || lower.contains("json now");
+
+                if likely_json {
+                    let json_cap: usize = std::env::var("OLLAMA_JSON_MAX_TOKENS")
+                        .unwrap_or_else(|_| "4096".to_string())
+                        .parse()
+                        .unwrap_or(4096);
+                    num_predict = num_predict.min(json_cap);
+                }
+
+                debug!(likely_json, num_predict, "Ollama num_predict chosen");
+
                 let payload = json!({
                     "model": self.model,
                     "prompt": input,
                     "stream": false,
                     "options": {
                         "temperature": self.temperature,
-                        "num_predict": self.max_tokens
+                        "num_predict": num_predict
                     }
                 });
                 debug!(payload = ?payload, "Sending request to Ollama API");

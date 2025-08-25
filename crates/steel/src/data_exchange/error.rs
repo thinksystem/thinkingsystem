@@ -27,6 +27,8 @@ pub enum DataExchangeError {
     Http(#[from] reqwest::Error),
     #[error("gRPC call failed: {0}")]
     Grpc(String),
+    #[error("QUIC exchange failed: {0}")]
+    Quic(String),
     #[error("Invalid connection type string: {0}")]
     InvalidConnectionType(String),
 }

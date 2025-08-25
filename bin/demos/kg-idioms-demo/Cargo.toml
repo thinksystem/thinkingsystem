@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+
+[package]
+name = "kg-idioms-demo"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "kg-idioms-demo"
+path = "src/main.rs"
+
+[dependencies]
+stele = { workspace = true }
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde_json.workspace = true
+dotenvy.workspace = true
+surrealdb.workspace = true

@@ -12,8 +12,10 @@
 
 use crate::llm::unified_adapter::UnifiedLLMAdapter;
 use crate::nlu::llm_processor::{CustomLLMAdapter, LLMAdapter};
+use chrono::{Datelike, Duration, Timelike, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
+use steel::messaging::insight::ner_analysis::{NerAnalyser, NerAnalysisResult};
 use tracing::{debug, info, instrument, warn};
 pub mod adapter;
 pub mod analyser;
@@ -122,13 +124,7 @@ impl NLUOrchestrator {
             let adapter: Arc<dyn LLMAdapter + Send + Sync> = match model.provider.as_str() {
                 "anthropic" => Arc::new(Self::create_anthropic_adapter(model)?),
                 "openai" => Arc::new(Self::create_openai_adapter(model)?),
-                "ollama" => {
-                    let unified_adapter =
-                        UnifiedLLMAdapter::with_defaults().await.map_err(|e| {
-                            OrchestratorError::new(format!("Failed to create unified adapter: {e}"))
-                        })?;
-                    Arc::new(unified_adapter)
-                }
+                "ollama" => Arc::new(Self::create_ollama_adapter(model)?),
                 _ => {
                     return Err(OrchestratorError::new(format!(
                         "Unsupported provider: {}",
@@ -140,6 +136,10 @@ impl NLUOrchestrator {
         }
         info!("Initialised {} LLM adapters", adapters.len());
         Ok(adapters)
+    }
+    fn create_ollama_adapter(model: &ModelConfig) -> Result<CustomLLMAdapter, OrchestratorError> {
+        CustomLLMAdapter::ollama(model.name.clone())
+            .map_err(|e| OrchestratorError::new(format!("Failed to create ollama adapter: {e}")))
     }
     fn create_anthropic_adapter(
         model: &ModelConfig,
@@ -338,6 +338,65 @@ impl NLUOrchestrator {
                 ..Default::default()
             });
         }
+
+        
+        let ner_enabled = std::env::var("STELE_ENABLE_NATIVE_NER")
+            .ok()
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        if ner_enabled {
+            match Self::run_native_ner(original_input) {
+                Ok(ner) => {
+                    if ner.overall_ner_score > 0.0 {
+                        let mut added_entities = 0usize;
+                        for e in ner.entities {
+                            let label = e.label.to_lowercase();
+                            if (label == "person" || label == "location") && e.confidence >= 0.6 {
+                                if !Self::has_entity(&unified_extracted_data, &e.text, &label) {
+                                    unified_extracted_data.nodes.push(KnowledgeNode::Entity(
+                                        Entity {
+                                            temp_id: format!("ner_{label}_{added_entities}"),
+                                            name: e.text.clone(),
+                                            entity_type: label.clone(),
+                                            confidence: e.confidence as f32,
+                                            metadata: Some(serde_json::json!({
+                                                "source": "native_ner",
+                                                "risk_score": e.risk_score
+                                            })),
+                                        },
+                                    ));
+                                    added_entities += 1;
+                                }
+                            } else if label == "date" && e.confidence >= 0.5 {
+                                
+                                let resolved = Self::resolve_temporal_text(&e.text);
+                                unified_extracted_data.nodes.push(KnowledgeNode::Temporal(
+                                    TemporalMarker {
+                                        temp_id: format!("ner_temporal_{added_entities}"),
+                                        date_text: e.text.clone(),
+                                        resolved_date: resolved,
+                                        confidence: e.confidence as f32,
+                                        metadata: Some(serde_json::json!({
+                                            "source": "native_ner"
+                                        })),
+                                    },
+                                ));
+                                added_entities += 1;
+                            }
+                        }
+                        if added_entities > 0 {
+                            debug!(added = added_entities, "Native NER enriched extracted data");
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("Native NER unavailable or failed: {}", e);
+                }
+            }
+        } else {
+            debug!("Native NER enrichment disabled");
+        }
+
         let execution_time_ms = start_time.elapsed().as_millis() as u64;
         let processing_metadata = ProcessingMetadata {
             strategy_used: strategy_name.to_string(),
@@ -352,13 +411,118 @@ impl NLUOrchestrator {
             topics,
             sentiment_score,
         };
-        Ok(UnifiedNLUData {
+        
+        let mut unified = UnifiedNLUData {
             segments,
             extracted_data: unified_extracted_data,
             processing_metadata,
-        })
+        };
+        if let Err(e) =
+            futures::executor::block_on(self.resolve_temporals_llm(&mut unified, original_input))
+        {
+            warn!("Temporal resolution step failed: {}", e);
+        }
+        Ok(unified)
     }
 
+    async fn resolve_temporals_llm(
+        &self,
+        data: &mut UnifiedNLUData,
+        original_input: &str,
+    ) -> Result<(), OrchestratorError> {
+        use chrono::Utc;
+        let now_iso = Utc::now().to_rfc3339();
+        let adapter = match self.get_default_adapter() {
+            Some(a) => a,
+            None => return Ok(()),
+        };
+        
+        let per_call_timeout = std::time::Duration::from_millis(1500);
+        for node in data.extracted_data.nodes.iter_mut() {
+            if let data_models::KnowledgeNode::Temporal(t) = node {
+                if t.resolved_date.is_some() || t.date_text.trim().is_empty() {
+                    continue;
+                }
+                let prompt = format!(
+                    concat!(
+                        "You are a temporal normalizer.\n",
+                        "- Current UTC datetime: {now}\n",
+                        "- Original input: \"{input}\"\n",
+                        "- Temporal phrase to normalize: \"{phrase}\"\n",
+                        "Return a strict JSON object with an ISO8601 UTC datetime for the most likely next occurrence.\n",
+                        "If only a day of week is given (e.g., 'tue', 'wed'), choose the next such day from now.\n",
+                        "If time missing, default to 09:00:00Z. If ambiguous, prefer the future.\n",
+                        "Respond ONLY as JSON: {{\"iso\": \"YYYY-MM-DDTHH:MM:SSZ\"}} or {{\"iso\": null}} if not resolvable."
+                    ),
+                    now = now_iso,
+                    input = original_input,
+                    phrase = t.date_text
+                );
+                let fut = adapter.process_text(&prompt);
+                match tokio::time::timeout(per_call_timeout, fut).await {
+                    Ok(Ok(resp_str)) => {
+                        
+                        let json_str =
+                            Self::extract_json_inline(&resp_str).unwrap_or(resp_str.clone());
+                        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                            if let Some(iso) = val.get("iso").and_then(|v| v.as_str()) {
+                                if !iso.is_empty() {
+                                    t.resolved_date = Some(iso.to_string());
+                                }
+                            }
+                        }
+                    }
+                    Ok(Err(e)) => warn!("LLM temporal normalization failed: {}", e),
+                    Err(_) => warn!("LLM temporal normalization timed out"),
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl NLUOrchestrator {
+    #[allow(dead_code)]
+    fn fallback_normalize_weekday(phrase: &str) -> Option<String> {
+        use chrono::{Datelike, TimeZone, Utc, Weekday};
+        let lower = phrase.trim().to_lowercase();
+        let map = [
+            ("mon", Weekday::Mon),
+            ("monday", Weekday::Mon),
+            ("tue", Weekday::Tue),
+            ("tues", Weekday::Tue),
+            ("tuesday", Weekday::Tue),
+            ("wed", Weekday::Wed),
+            ("wednesday", Weekday::Wed),
+            ("thu", Weekday::Thu),
+            ("thur", Weekday::Thu),
+            ("thurs", Weekday::Thu),
+            ("thursday", Weekday::Thu),
+            ("fri", Weekday::Fri),
+            ("friday", Weekday::Fri),
+            ("sat", Weekday::Sat),
+            ("saturday", Weekday::Sat),
+            ("sun", Weekday::Sun),
+            ("sunday", Weekday::Sun),
+        ];
+        let target = match map.iter().find(|(k, _)| lower.starts_with(*k)) {
+            Some((_, wd)) => *wd,
+            None => return None,
+        };
+        let now = Utc::now();
+        let current_wd = now.weekday();
+        let mut days_ahead = (target.num_days_from_monday() as i32
+            - current_wd.num_days_from_monday() as i32)
+            .rem_euclid(7);
+        if days_ahead == 0 {
+            days_ahead = 7;
+        }
+        let next = now + chrono::Duration::days(days_ahead as i64);
+        let dt = Utc
+            .with_ymd_and_hms(next.year(), next.month(), next.day(), 9, 0, 0)
+            .single()?;
+        Some(dt.to_rfc3339())
+    }
     pub fn validate_configuration(&self) -> Result<(), OrchestratorError> {
         let prompt_categories = vec!["extraction", "analysis", "classification"];
         for category in prompt_categories {
@@ -591,3 +755,124 @@ async fn timeout<T>(
     tokio::time::timeout(duration, future).await
 }
 pub use data_models::{ExtractedData, InputSegment, SegmentType, TaskOutput, UnifiedNLUData};
+
+impl NLUOrchestrator {
+    fn extract_json_inline(text: &str) -> Option<String> {
+        if let Some(start) = text.find("```json") {
+            let content_start = start + 7;
+            if let Some(end) = text[content_start..].find("```") {
+                let json_content = &text[content_start..content_start + end];
+                return Some(json_content.trim().to_string());
+            }
+        }
+        let trimmed = text.trim();
+        if (trimmed.starts_with('{') && trimmed.ends_with('}'))
+            || (trimmed.starts_with('[') && trimmed.ends_with(']'))
+        {
+            return Some(trimmed.to_string());
+        }
+        None
+    }
+    fn run_native_ner(text: &str) -> anyhow::Result<NerAnalysisResult> {
+        let mut analyser = NerAnalyser::default();
+        analyser.analyse_text(text)
+    }
+
+    fn has_entity(data: &ExtractedData, name: &str, entity_type: &str) -> bool {
+        let nl = name.to_lowercase();
+        let tl = entity_type.to_lowercase();
+        data.entities()
+            .any(|e| e.name.to_lowercase() == nl && e.entity_type.to_lowercase() == tl)
+    }
+
+    
+    fn resolve_temporal_text(text: &str) -> Option<String> {
+        let now = Utc::now();
+        let lower = text.trim().to_lowercase();
+
+        
+        let mut hour: Option<u32> = None;
+        let mut minute: u32 = 0;
+        
+        let time_re = regex::Regex::new(r"(?i)\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b").ok();
+        if let Some(re) = &time_re {
+            if let Some(caps) = re.captures(&lower) {
+                if let Some(h) = caps.get(1).and_then(|m| m.as_str().parse::<u32>().ok()) {
+                    hour = Some(h);
+                }
+                if let Some(m) = caps.get(2).and_then(|m| m.as_str().parse::<u32>().ok()) {
+                    minute = m;
+                }
+                if let Some(ap) = caps.get(3).map(|m| m.as_str().to_lowercase()) {
+                    if let Some(h) = hour.as_mut() {
+                        if ap == "pm" && *h < 12 {
+                            *h += 12;
+                        }
+                        if ap == "am" && *h == 12 {
+                            *h = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        
+        let mut date = if lower.contains("tomorrow") {
+            now + Duration::days(1)
+        } else if lower.contains("yesterday") {
+            now - Duration::days(1)
+        } else if lower.contains("today") {
+            now
+        } else {
+            
+            let weekdays = [
+                ("monday", chrono::Weekday::Mon),
+                ("tuesday", chrono::Weekday::Tue),
+                ("wednesday", chrono::Weekday::Wed),
+                ("thursday", chrono::Weekday::Thu),
+                ("friday", chrono::Weekday::Fri),
+                ("saturday", chrono::Weekday::Sat),
+                ("sunday", chrono::Weekday::Sun),
+            ];
+            let mut chosen: Option<chrono::Weekday> = None;
+            for (name, wd) in weekdays.iter() {
+                if lower.contains(&format!("next {name}")) || lower.contains(*name) {
+                    chosen = Some(*wd);
+                    break;
+                }
+            }
+            if let Some(target) = chosen {
+                let mut d = now.date_naive();
+                let mut add_days = (7 + target.num_days_from_monday() as i64
+                    - d.weekday().num_days_from_monday() as i64)
+                    % 7;
+                if add_days == 0 {
+                    add_days = 7;
+                }
+                d = d + chrono::naive::Days::new(add_days as u64);
+                d.and_time(now.time()).and_utc()
+            } else {
+                now
+            }
+        };
+
+        
+        if let Some(h) = hour {
+            date = date
+                .with_hour(h)
+                .and_then(|d| d.with_minute(minute))
+                .unwrap_or(date);
+            
+            if date < now && !lower.contains("yesterday") {
+                date += Duration::days(1);
+            }
+        } else {
+            date = date
+                .with_hour(9)
+                .and_then(|d| d.with_minute(0))
+                .unwrap_or(date);
+        }
+
+        Some(date.to_rfc3339())
+    }
+}

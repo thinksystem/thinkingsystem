@@ -11,9 +11,12 @@
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
 pub mod base_scribe;
+pub mod canonical;
 pub mod core;
 pub mod discourse;
+pub mod embeddings;
 pub mod replay_buffer;
+pub mod runtime; 
 pub mod scriptorium;
 pub mod specialists;
 pub mod types;
@@ -26,6 +29,7 @@ pub use replay_buffer::{MemoryExperience, ReplayBuffer, ReplayBufferConfig};
 use serde::{Deserialize, Serialize};
 pub use specialists::{DataScribe, IdentityScribe, KnowledgeScribe, Scribe, ScribeId};
 pub use types::{EmotionalState, InteractionOutcome};
+pub use runtime::{ScribeRuntimeManager, PreparedTask};
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct StrategyVector {
     pub aggressiveness: f32,

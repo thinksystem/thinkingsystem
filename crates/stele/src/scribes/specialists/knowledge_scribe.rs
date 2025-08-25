@@ -11,35 +11,17 @@
 // along with this program. If not, see https://www.gnu.org/licenses/.
 
 use crate::scribes::core::q_learning_core::QLearningCore;
+use crate::scribes::embeddings::{EmbeddingAdapter, LocalEmbeddingAdapter};
+use anyhow::{anyhow, Result};
 use serde_json::{json, Value};
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
+use surrealdb::{engine::remote::ws::Client, RecordId, Surreal};
 const KNOWLEDGE_SCRIBE_STATES: usize = 128;
 const KNOWLEDGE_SCRIBE_ACTIONS: usize = 4;
 const PCA_HISTORY_SIZE: usize = 200;
 const EMBEDDING_DIM: usize = 32;
 const SIMILARITY_THRESHOLD_FOR_LINK: f32 = 0.85;
-trait EmbeddingModel: Send + Sync + std::fmt::Debug {
-    fn embed(&self, text: &str) -> Vec<f32>;
-}
-#[derive(Debug)]
-struct SimpleEmbeddingModel;
-impl EmbeddingModel for SimpleEmbeddingModel {
-    fn embed(&self, text: &str) -> Vec<f32> {
-        let mut vec = vec![0.0; EMBEDDING_DIM];
-        for (i, byte) in text.bytes().enumerate() {
-            let idx = i % EMBEDDING_DIM;
-            vec[idx] += (byte as f32) / 255.0;
-        }
-        let norm = vec.iter().map(|x| x * x).sum::<f32>().sqrt();
-        if norm > 0.0 {
-            for val in &mut vec {
-                *val /= norm;
-            }
-        }
-        vec
-    }
-}
 #[derive(Debug, Clone)]
 struct KnowledgeEntity {
     data: Value,
@@ -55,7 +37,7 @@ pub struct KnowledgeScribe {
     pub id: String,
     cognitive_core: QLearningCore,
     graph: KnowledgeGraph,
-    embedding_model: Arc<dyn EmbeddingModel>,
+    embedding_model: Arc<dyn EmbeddingAdapter>,
     state_history: VecDeque<Vec<f32>>,
     principal_components: Vec<Vec<f32>>,
     last_state_action: Option<(usize, usize)>,
@@ -73,7 +55,7 @@ impl KnowledgeScribe {
                 16,
             ),
             graph: KnowledgeGraph::default(),
-            embedding_model: Arc::new(SimpleEmbeddingModel),
+            embedding_model: Arc::new(LocalEmbeddingAdapter::new(EMBEDDING_DIM)),
             state_history: VecDeque::with_capacity(PCA_HISTORY_SIZE),
             principal_components: Vec::new(),
             last_state_action: None,
@@ -495,4 +477,95 @@ fn cosine_similarity(vec_a: &[f32], vec_b: &[f32]) -> f32 {
     } else {
         dot / (mag_a * mag_b)
     }
+}
+
+/// Enrich a single utterance by embedding its derived nodes and proposing RELATED edges.
+/// Returns (embeddings_inserted, proposals_inserted).
+pub async fn enrich_utterance(
+    db: Arc<Surreal<Client>>,
+    utterance_id: String,
+) -> Result<(usize, usize)> {
+    // 1) Gather nodes derived from the utterance
+    let utt_rid: RecordId = utterance_id
+        .parse()
+        .map_err(|e| anyhow!("Invalid utterance id {utterance_id}: {e}"))?;
+    let mut q = db
+        .clone()
+        .query("SELECT VALUE in FROM derived_from WHERE out = $utt;")
+        .bind(("utt", utt_rid))
+        .await?;
+    let node_ids: Vec<RecordId> = q.take(0).unwrap_or_default();
+    if node_ids.is_empty() {
+        return Ok((0, 0));
+    }
+
+    // 2) Load names/types to build embeddings
+    let mut named: Vec<(RecordId, String)> = Vec::new();
+    for rid in &node_ids {
+        let mut qn = db
+            .clone()
+            .query("SELECT type, properties.name as name, properties.label as label, properties.value as value FROM $rid;")
+            .bind(("rid", rid.clone()))
+            .await?;
+        let recs: Vec<serde_json::Value> = qn.take(0).unwrap_or_default();
+        if let Some(r) = recs.first() {
+            let node_type = r.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            let name = r
+                .get("name")
+                .and_then(|v| v.as_str())
+                .or_else(|| r.get("label").and_then(|v| v.as_str()))
+                .or_else(|| r.get("value").and_then(|v| v.as_str()))
+                .unwrap_or("");
+            let key = if name.is_empty() { node_type } else { name };
+            named.push((rid.clone(), key.to_string()))
+        }
+    }
+    if named.is_empty() {
+        return Ok((0, 0));
+    }
+
+    // 3) Compute and persist embeddings
+    let adapter = LocalEmbeddingAdapter::new(32);
+    let mut with_vecs: Vec<(RecordId, Vec<f32>)> = Vec::new();
+    let mut embeds = 0usize;
+    for (rid, key) in &named {
+        let vec = adapter.embed(key);
+        let _ = db
+            .clone()
+            .query("CREATE knowledge_embedding SET node_ref = $n, model = $m, version = $v, vector = $vec, updated_at = time::now() RETURN AFTER;")
+            .bind(("n", rid.clone()))
+            .bind(("m", "local-hash"))
+            .bind(("v", "1"))
+            .bind(("vec", vec.clone()))
+            .await?;
+        embeds += 1;
+        with_vecs.push((rid.clone(), vec));
+    }
+
+    // 4) Propose edges among nodes using cosine similarity
+    let threshold: f32 = std::env::var("STELE_KNOWLEDGE_LINK_THRESHOLD")
+        .ok()
+        .and_then(|v| v.parse::<f32>().ok())
+        .unwrap_or(0.78);
+    let mut proposals = 0usize;
+    for i in 0..with_vecs.len() {
+        for j in (i + 1)..with_vecs.len() {
+            let (ref in_id, ref v1) = with_vecs[i];
+            let (ref out_id, ref v2) = with_vecs[j];
+            let score = cosine_similarity(v1, v2);
+            if score >= threshold {
+                let prov = json!({ "utterance": utterance_id, "method": "local-embedding", "score": score });
+                let _ = db
+                    .clone()
+                    .query("CREATE proposed_edge SET in_ref = $in, out_ref = $out, label = 'RELATED', score = $score, status = 'pending', provenance = $prov, created_at = time::now() RETURN AFTER;")
+                    .bind(("in", in_id.clone()))
+                    .bind(("out", out_id.clone()))
+                    .bind(("score", score as f64))
+                    .bind(("prov", prov))
+                    .await?;
+                proposals += 1;
+            }
+        }
+    }
+    Ok((embeds, proposals))
 }
